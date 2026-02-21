@@ -1,0 +1,535 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import StockSearch from '../components/StockSearch';
+import type { Instrument } from '../components/StockSearch';
+import StockChart from '../components/StockChart';
+import { Search, SlidersHorizontal, ArrowRightLeft, Briefcase, TrendingUp, X } from 'lucide-react';
+
+interface Position {
+    symbol: string;
+    qty: number;
+    avgPrice: number;
+}
+
+const DemoTrading: React.FC = () => {
+    const [selectedStock, setSelectedStock] = useState<Instrument | null>(null);
+    const [ltp, setLtp] = useState<number | null>(null);
+    const [prevLtp, setPrevLtp] = useState<number | null>(null);
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [loadingChart, setLoadingChart] = useState(false);
+    const [interval, setIntervalState] = useState('1m');
+
+    // Indicators
+    const defaultIndicators = {
+        sma: { enabled: false, period: 20, color: '#3b82f6' },
+        ema: { enabled: false, period: 50, color: '#f59e0b' },
+        vwap: { enabled: false, color: '#eab308' },
+        bb: { enabled: false, period: 20, stdDev: 2, color: '#06b6d4' },
+        rsi: { enabled: false, period: 14, color: '#a855f7' },
+        macd: { enabled: false, fast: 12, slow: 26, signal: 9, color: '#fb7185' },
+        stoch: { enabled: false, period: 14, signal: 3, color: '#10b981' },
+        atr: { enabled: false, period: 14, color: '#8b5cf6' },
+        adx: { enabled: false, period: 14, color: '#f97316' },
+        obv: { enabled: false, color: '#3b82f6' },
+        volume: { enabled: false, color: '#64748b' },
+        ichimoku: { enabled: false, conversion: 9, base: 26, span: 52, displacement: 26, color: '#14b8a6' },
+        cci: { enabled: false, period: 20, color: '#ec4899' },
+        williamsr: { enabled: false, period: 14, color: '#0ea5e9' },
+        mfi: { enabled: false, period: 14, color: '#14b8a6' },
+        kc: { enabled: false, period: 20, multiplier: 1, color: '#8b5cf6' },
+    };
+    const [indicatorConfig, setIndicatorConfig] = useState<any>(defaultIndicators);
+    const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
+    const [indicatorSearch, setIndicatorSearch] = useState('');
+    const [settingsModal, setSettingsModal] = useState<string | null>(null);
+    const [tempSettings, setTempSettings] = useState<any>(null);
+
+    const updateIndicatorSettings = (key: string, field: string, value: any) => {
+        if (field === 'all') {
+            setIndicatorConfig((prev: any) => ({ ...prev, [key]: { ...prev[key], ...value } }));
+        } else {
+            setIndicatorConfig((prev: any) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+        }
+    };
+
+    const allIndicatorsList = [
+        {
+            category: 'Trend Following', items: [
+                { key: 'sma', label: 'Simple Moving Average (SMA)', fields: [{ name: 'period', type: 'number', label: 'Period' }] },
+                { key: 'ema', label: 'Exponential Moving Average (EMA)', fields: [{ name: 'period', type: 'number', label: 'Period' }] },
+                { key: 'rsi', label: 'Relative Strength Index (RSI)', fields: [{ name: 'period', type: 'number', label: 'Period' }] },
+                { key: 'macd', label: 'Moving Average Convergence Divergence (MACD)', fields: [{ name: 'fast', type: 'number', label: 'Fast' }, { name: 'slow', type: 'number', label: 'Slow' }, { name: 'signal', type: 'number', label: 'Signal' }] },
+                { key: 'adx', label: 'Average Directional Index (ADX)', fields: [{ name: 'period', type: 'number', label: 'Period' }] }
+            ]
+        },
+        {
+            category: 'Oscillators', items: [
+                { key: 'stoch', label: 'Stochastic Oscillator', fields: [{ name: 'period', type: 'number', label: 'Period' }, { name: 'signal', type: 'number', label: 'Signal' }] },
+                { key: 'cci', label: 'Commodity Channel Index (CCI)', fields: [{ name: 'period', type: 'number', label: 'Period' }] },
+                { key: 'williamsr', label: 'Williams %R', fields: [{ name: 'period', type: 'number', label: 'Period' }] },
+                { key: 'mfi', label: 'Money Flow Index (MFI)', fields: [{ name: 'period', type: 'number', label: 'Period' }] }
+            ]
+        },
+        {
+            category: 'Volatility', items: [
+                { key: 'atr', label: 'Average True Range (ATR)', fields: [{ name: 'period', type: 'number', label: 'Period' }] },
+                { key: 'bb', label: 'Bollinger Bands', fields: [{ name: 'period', type: 'number', label: 'Period' }, { name: 'stdDev', type: 'number', label: 'Std Dev' }] },
+                { key: 'kc', label: 'Keltner Channels', fields: [{ name: 'period', type: 'number', label: 'Period' }, { name: 'multiplier', type: 'number', label: 'Multiplier' }] }
+            ]
+        },
+        {
+            category: 'Volume', items: [
+                { key: 'obv', label: 'On-Balance Volume (OBV)', fields: [] },
+                { key: 'vwap', label: 'Volume-Weighted Average Price (VWAP)', fields: [] },
+                { key: 'volume', label: 'Volume', fields: [] }
+            ]
+        },
+        {
+            category: 'Support & Resistance', items: [
+                { key: 'ichimoku', label: 'Ichimoku Cloud', fields: [{ name: 'conversion', type: 'number', label: 'Conv' }, { name: 'base', type: 'number', label: 'Base' }, { name: 'span', type: 'number', label: 'Span' }, { name: 'displacement', type: 'number', label: 'Disp' }] }
+            ]
+        }
+    ];
+
+    // Trading state
+    const [qty, setQty] = useState<number>(1);
+    const [positions, setPositions] = useState<Record<string, Position>>({});
+    const [cash, setCash] = useState<number>(100000); // 1 Lakh Demo Cash
+
+    const fetchStockData = async (instrument: Instrument, timeframe: string) => {
+        try {
+            setLoadingChart(true);
+            const [ltpRes, intradayRes] = await Promise.all([
+                axios.get(`http://localhost:4000/api/ltp?instrument_key=${instrument.instrument_key}`),
+                axios.get(`http://localhost:4000/api/intraday?instrument_key=${instrument.instrument_key}&interval=${timeframe}`)
+            ]);
+            setPrevLtp(ltp);
+            setLtp(ltpRes.data.last_price);
+            setChartData(intradayRes.data);
+        } catch (err) {
+            console.error("Error fetching data", err);
+        } finally {
+            setLoadingChart(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!selectedStock) return;
+        fetchStockData(selectedStock, interval);
+        const intervalId = setInterval(() => {
+            axios.get(`http://localhost:4000/api/ltp?instrument_key=${selectedStock.instrument_key}`)
+                .then(res => {
+                    const price = res.data.last_price;
+                    setPrevLtp(prev => prev !== price ? price : prev);
+                    setLtp(price);
+                    setChartData(prev => {
+                        if (!prev || prev.length === 0) return prev;
+                        const newData = [...prev];
+                        const lastIdx = newData.length - 1;
+                        const updatedCandle = { ...newData[lastIdx] };
+                        updatedCandle.close = price;
+                        if (price > updatedCandle.high) updatedCandle.high = price;
+                        if (price < updatedCandle.low) updatedCandle.low = price;
+                        newData[lastIdx] = updatedCandle;
+                        return newData;
+                    });
+                })
+                .catch(() => { });
+        }, 1500); // Poll LTP closer to real-time
+        return () => clearInterval(intervalId);
+    }, [selectedStock, interval]);
+
+    const checkMarketOpen = () => {
+        const now = new Date();
+        const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+        const day = istTime.getDay();
+        const hours = istTime.getHours();
+        const mins = istTime.getMinutes();
+        const timeInMins = hours * 60 + mins;
+        // Mon-Fri (1-5), 9:15 AM (555) to 3:30 PM (930)
+        return day >= 1 && day <= 5 && timeInMins >= 555 && timeInMins <= 930;
+    };
+
+    const handleSelectStock = (stock: Instrument) => {
+        let defaultExch = stock.exchange;
+        let defaultKey = stock.instrument_key;
+        if (stock.exchanges && stock.instrument_keys) {
+            if (stock.exchanges.includes('NSE_EQ')) {
+                defaultExch = 'NSE_EQ';
+                defaultKey = stock.instrument_keys['NSE_EQ'];
+            } else if (stock.exchanges.includes('BSE_EQ')) {
+                defaultExch = 'BSE_EQ';
+                defaultKey = stock.instrument_keys['BSE_EQ'];
+            }
+        }
+        setSelectedStock({
+            ...stock,
+            exchange: defaultExch,
+            instrument_key: defaultKey
+        });
+    };
+
+    const handleExchangeToggle = (exch: string) => {
+        if (selectedStock && selectedStock.instrument_keys && selectedStock.exchange !== exch) {
+            setSelectedStock({
+                ...selectedStock,
+                exchange: exch,
+                instrument_key: selectedStock.instrument_keys[exch]
+            });
+        }
+    };
+
+    const handleTrade = (type: 'BUY' | 'SELL') => {
+        if (!selectedStock || !ltp || qty <= 0) return;
+
+        if (!checkMarketOpen()) {
+            alert("Market is closed. Please trade during Indian market hours (9:15 AM - 3:30 PM IST).");
+            return;
+        }
+
+        const cost = ltp * qty;
+        const currentPos = positions[selectedStock.symbol] || { symbol: selectedStock.symbol, qty: 0, avgPrice: 0 };
+
+        if (type === 'BUY') {
+            if (cash < cost) {
+                alert("Not enough Demo Cash!");
+                return;
+            }
+            const newQty = currentPos.qty + qty;
+            const newAvgPrice = ((currentPos.qty * currentPos.avgPrice) + cost) / newQty;
+
+            setPositions({ ...positions, [selectedStock.symbol]: { symbol: selectedStock.symbol, qty: newQty, avgPrice: newAvgPrice } });
+            setCash(cash - cost);
+        } else {
+            // SELL
+            if (currentPos.qty < qty) {
+                alert("You don't have enough units to sell!");
+                return;
+            }
+            const newQty = currentPos.qty - qty;
+            const newPositions = { ...positions };
+            if (newQty === 0) {
+                delete newPositions[selectedStock.symbol];
+            } else {
+                newPositions[selectedStock.symbol] = { ...currentPos, qty: newQty };
+            }
+            setPositions(newPositions);
+            setCash(cash + cost);
+        }
+    };
+
+    const currentPosition = selectedStock ? positions[selectedStock.symbol] : null;
+
+    return (
+        <div className="min-h-[calc(100vh-72px)] bg-transparent text-slate-200 p-4 md:p-8 font-sans">
+            <div className="max-w-[1400px] mx-auto">
+                <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8 mt-4">
+                    <div>
+                        <h1 className="text-3xl md:text-5xl font-extrabold bg-gradient-to-r from-emerald-400 to-green-600 bg-clip-text text-transparent drop-shadow-sm mb-2">
+                            Pro Terminal
+                        </h1>
+                        <p className="text-slate-400 font-medium tracking-wide">Advanced Real-time Demo Trading</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full xl:w-auto">
+                        <StockSearch onSelect={handleSelectStock} />
+                        {selectedStock && (
+                            <div className="bg-[#0f1629]/90 backdrop-blur-md border border-slate-800/80 px-6 py-2 rounded-xl flex flex-col items-center xl:items-end shadow-lg h-[50px] justify-center ml-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Available Cash</span>
+                                <span className="text-lg font-mono font-black text-emerald-400 leading-tight">₹{cash.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                    </div>
+                </header>
+
+                {selectedStock ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+                        {/* Main Chart Area */}
+                        <div className="lg:col-span-3 space-y-6">
+
+                            {/* Header Card */}
+                            <div className="bg-[#0f1629]/80 backdrop-blur-md border border-slate-800/80 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-2xl rounded-2xl relative z-20">
+                                <div className="relative z-10 flex flex-col gap-1 w-full">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex bg-slate-800 rounded p-0.5">
+                                            {selectedStock.exchanges ? selectedStock.exchanges.map(exch => (
+                                                <button
+                                                    key={exch}
+                                                    onClick={() => handleExchangeToggle(exch)}
+                                                    className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-colors ${selectedStock.exchange === exch ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                                                >
+                                                    {exch.replace('_EQ', '')}
+                                                </button>
+                                            )) : (
+                                                <span className="text-slate-400 text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded">
+                                                    {selectedStock.exchange.replace('_EQ', '')}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-slate-500 text-sm truncate max-w-[200px] sm:max-w-xs">{selectedStock.name}</span>
+                                    </div>
+                                    <div className="flex items-end gap-6 mt-1 w-full justify-between sm:justify-start">
+                                        <h2 className="text-4xl font-black text-white">{selectedStock.symbol}</h2>
+                                        <div className="text-right sm:text-left">
+                                            <div className={`text-4xl font-mono font-bold tracking-tight transition-colors duration-300 ${!prevLtp || ltp === prevLtp ? 'text-white' : (ltp! > prevLtp! ? 'text-green-400' : 'text-red-400')}`}>
+                                                ₹{(ltp || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Timeframes & Indicators */}
+                                <div className="relative z-10 flex flex-col items-end gap-3 mt-6 sm:mt-0 max-w-[600px] w-full">
+                                    <div className="flex gap-2 p-1 bg-[#151e32] border border-slate-700/50 rounded-xl self-end">
+                                        {['1m', '5m', '15m', '1h', '1d'].map(tf => (
+                                            <button
+                                                key={tf}
+                                                onClick={() => setIntervalState(tf)}
+                                                className={`px-3 py-1 text-sm font-bold rounded-lg transition-colors ${interval === tf ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
+                                            >
+                                                {tf}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex flex-wrap justify-end gap-2 w-full relative">
+                                        <button
+                                            onClick={() => setShowIndicatorMenu(true)}
+                                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[#151e32] border border-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors shadow-lg"
+                                        >
+                                            <SlidersHorizontal size={16} className="text-blue-400" />
+                                            <span className="text-sm font-bold tracking-wide">GTF Indicators</span>
+                                        </button>
+
+                                        {showIndicatorMenu && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setShowIndicatorMenu(false)}></div>
+                                                <div className="absolute top-12 right-0 z-50 bg-[#0f1629] border border-slate-700 w-80 max-h-[60vh] flex flex-col rounded-xl shadow-2xl overflow-hidden">
+                                                    <div className="flex items-center p-3 border-b border-slate-800">
+                                                        <h3 className="text-lg font-bold text-white">Indicators</h3>
+                                                        <button onClick={() => setShowIndicatorMenu(false)} className="ml-auto text-slate-400 hover:text-white p-1"><X size={20} /></button>
+                                                    </div>
+                                                    <div className="p-2 border-b border-slate-800 flex items-center bg-slate-900 mx-3 mt-3 rounded">
+                                                        <Search size={16} className="text-slate-400 mr-2" />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search"
+                                                            value={indicatorSearch}
+                                                            onChange={e => setIndicatorSearch(e.target.value)}
+                                                            className="w-full bg-transparent text-sm text-white outline-none border-none py-1"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 overflow-y-auto p-2 space-y-4">
+                                                        {allIndicatorsList.map(category => {
+                                                            const filteredItems = category.items.filter(item => item.label.toLowerCase().includes(indicatorSearch.toLowerCase()));
+                                                            if (filteredItems.length === 0) return null;
+                                                            return (
+                                                                <div key={category.category}>
+                                                                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 px-2">{category.category}</h4>
+                                                                    <div className="space-y-0.5">
+                                                                        {filteredItems.map(item => {
+                                                                            const isEnabled = indicatorConfig[item.key]?.enabled;
+                                                                            return (
+                                                                                <div
+                                                                                    key={item.key}
+                                                                                    className={`flex justify-between items-center px-2 py-1.5 rounded transition-colors cursor-pointer hover:bg-slate-800`}
+                                                                                    onClick={() => {
+                                                                                        updateIndicatorSettings(item.key, 'enabled', !isEnabled);
+                                                                                    }}
+                                                                                >
+                                                                                    <span className="text-slate-300 text-sm">{item.label}</span>
+                                                                                    {isEnabled && (
+                                                                                        <div className={`w-1.5 h-1.5 rounded-full bg-blue-500`}></div>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {settingsModal && tempSettings && (
+                                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 w-screen h-screen">
+                                                <div className="bg-[#0f1629] border border-slate-700 w-full max-w-md rounded-xl shadow-2xl">
+                                                    <div className="flex items-center justify-between p-4 border-b border-slate-800">
+                                                        <h3 className="text-xl font-bold text-white uppercase tracking-wider">{settingsModal}</h3>
+                                                        <button onClick={() => setSettingsModal(null)} className="text-slate-400 hover:text-white p-1"><X size={20} /></button>
+                                                    </div>
+                                                    <div className="p-4 flex gap-6 border-b border-slate-800">
+                                                        <span className="text-white font-medium border-b-2 border-blue-500 pb-2 -mb-[18px]">Inputs & Style</span>
+                                                    </div>
+                                                    <div className="p-6 space-y-4">
+                                                        {allIndicatorsList.flatMap(c => c.items).find(i => i.key === settingsModal)?.fields.map(field => (
+                                                            <div key={field.name} className="flex justify-between items-center">
+                                                                <span className="text-slate-400 text-sm">{field.label}</span>
+                                                                <input
+                                                                    type="number"
+                                                                    value={tempSettings[field.name]}
+                                                                    onChange={(e) => setTempSettings({ ...tempSettings, [field.name]: parseFloat(e.target.value) || 1 })}
+                                                                    className="w-24 bg-slate-900 border border-slate-700 text-white rounded px-3 py-1.5 focus:border-blue-500 outline-none text-right"
+                                                                />
+                                                            </div>
+                                                        ))}
+
+                                                        {indicatorConfig[settingsModal]?.color && (
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-slate-400 text-sm">Color</span>
+                                                                <input
+                                                                    type="color"
+                                                                    value={tempSettings.color || '#3b82f6'}
+                                                                    onChange={(e) => setTempSettings({ ...tempSettings, color: e.target.value })}
+                                                                    className="w-10 h-10 p-1 bg-transparent border-0 cursor-pointer"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="p-4 border-t border-slate-800 flex justify-end gap-3">
+                                                        <button onClick={() => setSettingsModal(null)} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors text-sm font-medium">Cancel</button>
+                                                        <button onClick={() => { updateIndicatorSettings(settingsModal, 'all', tempSettings); setSettingsModal(null); }} className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors text-sm font-medium">Ok</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Chart Component */}
+                            <div className="relative">
+                                {loadingChart && (
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm rounded-2xl">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                            <span className="text-slate-300 font-medium">Loading Chart Data...</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <StockChart data={chartData} symbol={selectedStock.symbol} indicators={indicatorConfig} interval={interval} onOpenSettings={(key) => { setTempSettings({ key, ...indicatorConfig[key] }); setSettingsModal(key); }} />
+                            </div>
+                        </div>
+
+                        {/* Sidebar (Trade + Portfolio) */}
+                        <div className="space-y-6">
+
+                            {/* Order Panel */}
+                            <div className="bg-[#0f1629]/90 backdrop-blur-md border border-slate-800/80 p-6 rounded-2xl shadow-2xl">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2 text-white">
+                                        <ArrowRightLeft size={20} className="text-blue-500" /> Place Order
+                                    </h3>
+                                    <div className="text-sm px-3 py-1 bg-slate-800 rounded-full font-mono font-medium text-slate-300">
+                                        {selectedStock.exchange.replace('_EQ', '')} EQ
+                                    </div>
+                                </div>
+
+                                <div className="space-y-5">
+                                    <div className="space-y-4">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block px-1">Quantity (Units)</label>
+                                        <div className="flex items-center border border-slate-700/50 rounded-xl overflow-hidden bg-[#0a0f18] focus-within:border-slate-500/50 transition-colors w-full h-12">
+                                            <button
+                                                onClick={() => setQty(Math.max(1, qty - 1))}
+                                                className="w-10 ml-1.5 my-1.5 rounded-lg hover:bg-slate-700/50 font-black text-slate-300 flex items-center justify-center transition-colors bg-slate-800/80 cursor-pointer h-9 shrink-0"
+                                            >
+                                                -
+                                            </button>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={qty}
+                                                onChange={(e) => setQty(parseInt(e.target.value) || 1)}
+                                                className="flex-1 bg-transparent text-center h-full text-lg font-bold text-white focus:outline-none placeholder-slate-600 outline-none w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                            <button
+                                                onClick={() => setQty(qty + 1)}
+                                                className="w-10 mr-1.5 my-1.5 rounded-lg hover:bg-slate-700/50 font-black text-slate-300 flex items-center justify-center transition-colors bg-white/10 cursor-pointer h-9 shrink-0"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center px-1">
+                                        <span className="text-slate-400 text-sm font-medium">Est. Cost</span>
+                                        <span className="text-white font-mono font-bold text-lg">₹{((ltp || 0) * qty).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 pt-2">
+                                        <button
+                                            onClick={() => handleTrade('BUY')}
+                                            disabled={!ltp}
+                                            className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black py-3 rounded-xl transition-all uppercase tracking-wide text-sm"
+                                        >
+                                            Buy
+                                        </button>
+                                        <button
+                                            onClick={() => handleTrade('SELL')}
+                                            disabled={!ltp || !currentPosition || currentPosition.qty < qty}
+                                            className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black py-3 rounded-xl transition-all uppercase tracking-wide text-sm border-2 border-transparent hover:border-slate-600"
+                                        >
+                                            Sell
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Portfolio Panel */}
+                            <div className="bg-[#0f1629]/90 backdrop-blur-md border border-slate-800/80 p-6 rounded-2xl shadow-2xl flex flex-col max-h-[400px]">
+                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white shrink-0">
+                                    <Briefcase size={20} className="text-indigo-400" /> My Portfolio
+                                </h3>
+
+                                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                    {Object.keys(positions).length === 0 ? (
+                                        <div className="flex flex-col justify-center items-center text-slate-500 gap-3 py-8">
+                                            <Briefcase size={32} className="opacity-20" />
+                                            <span className="text-sm font-medium">No active positions</span>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {Object.values(positions).map(pos => {
+                                                const isCurrent = pos.symbol === selectedStock.symbol;
+                                                const posLtp = isCurrent && ltp ? ltp : pos.avgPrice; // using avg price if not selected to avoid making 10 api calls for demo
+                                                const pnl = (posLtp - pos.avgPrice) * pos.qty;
+                                                const isProfit = pnl >= 0;
+
+                                                return (
+                                                    <div key={pos.symbol} className="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className="font-bold text-white">{pos.symbol} <span className="text-xs bg-slate-700/50 text-slate-300 px-1.5 py-0.5 rounded ml-1">x{pos.qty}</span></span>
+                                                            <span className={`text-sm font-bold font-mono ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                                {isProfit ? '+' : ''}₹{pnl.toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs text-slate-400">
+                                                            <span>Avg: ₹{pos.avgPrice.toFixed(2)}</span>
+                                                            <span>{isCurrent ? `LTP: ₹${posLtp.toFixed(2)}` : 'Switch to view LTP'}</span>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-[20vh] border-2 border-dashed border-slate-800/60 rounded-3xl bg-slate-900/20 backdrop-blur-sm">
+                        <div className="bg-slate-800/50 p-6 rounded-3xl mb-6 shadow-inner border border-slate-700/50">
+                            <TrendingUp size={56} className="text-blue-500/80 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                        </div>
+                        <h2 className="text-3xl font-bold text-white mb-3">Your Journey Starts Here</h2>
+                        <p className="text-slate-400 max-w-md text-center">Search for a company using the search bar above to view real-time charts, indicators, and execute demo trades.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default DemoTrading;
