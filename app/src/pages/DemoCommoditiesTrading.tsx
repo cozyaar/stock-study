@@ -12,6 +12,56 @@ const COMMODITIES: Instrument[] = [
     { instrument_key: "COMM|NATURALGAS", symbol: "NATURALGAS", name: "Natural Gas", exchange: "MCX" },
 ];
 
+const MarketStatusBadge = ({ type }: { type: 'stock' | 'commodity' }) => {
+    const [statusData, setStatusData] = useState({ status: '...', color: 'text-slate-500' });
+
+    useEffect(() => {
+        const updateStatus = () => {
+            const now = new Date();
+            const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+            const day = istTime.getDay();
+            const hours = istTime.getHours();
+            const minutes = istTime.getMinutes();
+            const timeInMinutes = hours * 60 + minutes;
+
+            if (day === 0 || day === 6) {
+                setStatusData({ status: "Market Closed (Weekend)", color: "bg-red-500/10 text-red-500 border border-red-500/20" });
+                return;
+            }
+
+            if (type === 'stock') {
+                const preMarketStart = 9 * 60;
+                const preMarketEnd = 9 * 60 + 15;
+                const marketEnd = 15 * 60 + 30;
+                const postMarketEnd = 16 * 60;
+
+                if (timeInMinutes >= preMarketStart && timeInMinutes < preMarketEnd) setStatusData({ status: "Pre-Market", color: "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20" });
+                else if (timeInMinutes >= preMarketEnd && timeInMinutes < marketEnd) setStatusData({ status: "Market Live", color: "bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20" });
+                else if (timeInMinutes >= marketEnd && timeInMinutes < postMarketEnd) setStatusData({ status: "Post-Market", color: "bg-orange-500/10 text-orange-500 border border-orange-500/20" });
+                else setStatusData({ status: "Market Closed", color: "bg-red-500/10 text-red-500 border border-red-500/20" });
+            } else {
+                const morningStart = 9 * 60;
+                const eveningStart = 17 * 60;
+                const eveningEnd = 23 * 60 + 30;
+
+                if (timeInMinutes >= morningStart && timeInMinutes < eveningStart) setStatusData({ status: "Morning Session Live", color: "bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20" });
+                else if (timeInMinutes >= eveningStart && timeInMinutes < eveningEnd) setStatusData({ status: "Evening Session Live", color: "bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20" });
+                else setStatusData({ status: "Market Closed", color: "bg-red-500/10 text-red-500 border border-red-500/20" });
+            }
+        };
+        updateStatus();
+        const interval = setInterval(updateStatus, 60000);
+        return () => clearInterval(interval);
+    }, [type]);
+
+    return (
+        <span className={`px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm ${statusData.color}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${statusData.color.includes('red') ? 'bg-red-500' : statusData.color.includes('yellow') ? 'bg-yellow-500' : statusData.color.includes('orange') ? 'bg-orange-500' : 'bg-[#22c55e] animate-pulse'}`}></span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">{statusData.status}</span>
+        </span>
+    );
+};
+
 const DemoCommoditiesTrading: React.FC = () => {
     const [selectedStock, setSelectedStock] = useState<Instrument | null>(COMMODITIES[0]);
     const [ltp, setLtp] = useState<number | null>(null);
@@ -286,8 +336,9 @@ const DemoCommoditiesTrading: React.FC = () => {
                                             )}
                                         </div>
                                         <span className="text-slate-500 text-sm truncate max-w-[200px] sm:max-w-xs">{selectedStock.name}</span>
+                                        <MarketStatusBadge type="commodity" />
                                     </div>
-                                    <div className="flex items-end gap-6 mt-1 w-full justify-between sm:justify-start">
+                                    <div className="flex items-end flex-wrap gap-4 mt-1 w-full justify-between sm:justify-start">
                                         <h2 className="text-4xl font-black text-white">{selectedStock.symbol}</h2>
                                         <div className="text-right sm:text-left">
                                             <div className={`text-4xl font-mono font-bold tracking-tight transition-colors duration-300 ${!prevLtp || ltp === prevLtp ? 'text-white' : (ltp! > prevLtp! ? 'text-[#22c55e]' : 'text-red-500')}`}>

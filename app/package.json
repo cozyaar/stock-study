@@ -54,6 +54,7 @@
     "react-resizable-panels": "^4.2.2",
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",
+    "stock-study-monorepo": "file:..",
     "tailwind-merge": "^3.4.0",
     "technicalindicators": "^3.1.0",
     "vaul": "^1.1.2",

@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import yahooFinance from "yahoo-finance2";
+import axios from "axios";
 import { getInstruments } from "./utils";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -28,21 +28,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         else yfSymbol += '.NS';
     }
 
-    let period1: string;
     const intervalStr = Array.isArray(interval) ? interval[0] : (interval as string);
+    let rangeQuery = "1d";
 
-    if (intervalStr === "1m") {
-        period1 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    } else if (["5m", "15m", "30m", "60m", "90m"].includes(intervalStr)) {
-        period1 = new Date(Date.now() - 59 * 24 * 60 * 60 * 1000).toISOString();
-    } else if (intervalStr === "1h") {
-        period1 = new Date(Date.now() - 729 * 24 * 60 * 60 * 1000).toISOString();
-    } else {
-        period1 = "1970-01-01";
-    }
+    if (intervalStr === "1m") rangeQuery = "5d";
+    else if (["5m", "15m", "30m", "60m", "90m"].includes(intervalStr)) rangeQuery = "1mo";
+    else if (intervalStr === "1h") rangeQuery = "3mo";
+    else if (intervalStr === "1d") rangeQuery = "1y";
 
     try {
-        const chart = await yahooFinance.chart(yfSymbol, { interval: intervalStr as any, period1 });
+        const yahooRes = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${yfSymbol}?interval=${intervalStr}&range=${rangeQuery}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+        });
+
+        const chartData = yahooRes.data.chart.result[0];
+        if (!chartData.timestamp || !chartData.indicators.quote[0]) {
+            return res.status(200).json([]);
+        }
+
+        const timestamps = chartData.timestamp;
+        const quotes = chartData.indicators.quote[0];
 
         let multiplier = 1;
         if (isCommodity) {
@@ -51,19 +56,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             else multiplier = 83;
         }
 
-        const candles = chart.quotes
-            .filter((q) => q.open !== null && q.open !== undefined)
-            .map((q) => ({
-                time: new Date(q.date).getTime() / 1000,
-                open: q.open! * multiplier,
-                high: q.high! * multiplier,
-                low: q.low! * multiplier,
-                close: q.close! * multiplier,
-                volume: q.volume,
-            }));
+        const candles = [];
+        for (let i = 0; i < timestamps.length; i++) {
+            if (quotes.open[i] !== null && quotes.open[i] !== undefined) {
+                candles.push({
+                    time: timestamps[i],
+                    open: quotes.open[i] * multiplier,
+                    high: quotes.high[i] * multiplier,
+                    low: quotes.low[i] * multiplier,
+                    close: quotes.close[i] * multiplier,
+                    volume: quotes.volume[i] || 0
+                });
+            }
+        }
 
         res.status(200).json(candles);
     } catch (e: any) {
+        console.error("Intraday API Error:", e.response?.data || e.message);
         res.status(500).json({ error: e.message });
     }
 }
