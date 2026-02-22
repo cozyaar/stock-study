@@ -168,6 +168,15 @@ const DemoCommoditiesTrading: React.FC = () => {
         if (!selectedStock) return;
         fetchStockData(selectedStock, interval);
         const intervalId = setInterval(() => {
+            const now = new Date();
+            const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+            const day = istTime.getDay();
+            const timeInMins = istTime.getHours() * 60 + istTime.getMinutes();
+            // Commodities Open Mon-Fri 9:00 AM (540m) to 11:30 PM (1410m)
+            const isOpen = day >= 1 && day <= 5 && timeInMins >= 540 && timeInMins <= 1410;
+
+            if (!isOpen) return;
+
             axios.get(`/api/ltp?instrument_key=${selectedStock.instrument_key}`)
                 .then(res => {
                     const price = res.data.last_price;
@@ -186,7 +195,7 @@ const DemoCommoditiesTrading: React.FC = () => {
                     });
                 })
                 .catch(() => { });
-        }, 100); // Poll LTP closer to real-time (100ms)
+        }, 2000); // Poll LTP every 2s when market open
         return () => clearInterval(intervalId);
     }, [selectedStock, interval]);
 
@@ -197,8 +206,8 @@ const DemoCommoditiesTrading: React.FC = () => {
         const hours = istTime.getHours();
         const mins = istTime.getMinutes();
         const timeInMins = hours * 60 + mins;
-        // Mon-Fri (1-5), 9:15 AM (555) to 3:30 PM (930)
-        return day >= 1 && day <= 5 && timeInMins >= 555 && timeInMins <= 930;
+        // Mon-Fri (1-5), 9:00 AM (540) to 11:30 PM (1410)
+        return day >= 1 && day <= 5 && timeInMins >= 540 && timeInMins <= 1410;
     };
 
     const handleSelectStock = (stock: Instrument) => {

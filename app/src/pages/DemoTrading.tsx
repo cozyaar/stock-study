@@ -162,6 +162,14 @@ const DemoTrading: React.FC = () => {
         if (!selectedStock) return;
         fetchStockData(selectedStock, interval);
         const intervalId = setInterval(() => {
+            const now = new Date();
+            const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+            const day = istTime.getDay();
+            const timeInMins = istTime.getHours() * 60 + istTime.getMinutes();
+            const isOpen = day >= 1 && day <= 5 && timeInMins >= 555 && timeInMins <= 930;
+
+            if (!isOpen) return;
+
             axios.get(`/api/ltp?instrument_key=${selectedStock.instrument_key}`)
                 .then(res => {
                     const price = res.data.last_price;
@@ -180,7 +188,7 @@ const DemoTrading: React.FC = () => {
                     });
                 })
                 .catch(() => { });
-        }, 100); // Poll LTP closer to real-time (100ms)
+        }, 2000); // Poll LTP every 2s when market open
         return () => clearInterval(intervalId);
     }, [selectedStock, interval]);
 
