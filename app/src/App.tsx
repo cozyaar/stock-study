@@ -3,10 +3,11 @@ import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { LearnerPage } from './pages/LearnerPage';
 import DemoTrading from './pages/DemoTrading';
+import DemoCommoditiesTrading from './pages/DemoCommoditiesTrading';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 
-export type Page = 'home' | 'learner' | 'demo' | 'about' | 'contact';
+export type Page = 'home' | 'learner' | 'demo' | 'demo-commodities' | 'about' | 'contact';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -18,6 +19,7 @@ function App() {
         {currentPage === 'home' && <HomePage onPageChange={setCurrentPage} />}
         {currentPage === 'learner' && <LearnerPage />}
         {currentPage === 'demo' && <DemoTrading />}
+        {currentPage === 'demo-commodities' && <DemoCommoditiesTrading />}
         {currentPage === 'about' && <AboutPage />}
         {currentPage === 'contact' && <ContactPage />}
       </main>

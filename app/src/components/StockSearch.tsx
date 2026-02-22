@@ -27,8 +27,7 @@ const StockSearch: React.FC<{ onSelect: (i: Instrument) => void }> = ({ onSelect
             }
             setLoading(true);
             try {
-                const res = await axios.get(`http://localhost:4000/api/search?q=${query.trim()}`);
-                setResults(res.data);
+                const res = await axios.get(`/api/search?q=${query.trim()}`); setResults(res.data);
             } catch (e) {
                 console.error("Search failed", e);
             } finally {

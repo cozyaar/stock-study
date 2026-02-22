@@ -1,4 +1,4 @@
-import { TrendingUp, Menu, X } from 'lucide-react';
+import { TrendingUp, Menu, X, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { Page } from '@/App';
@@ -36,18 +36,52 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
-              <button
-                key={item.page}
-                onClick={() => onPageChange(item.page)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === item.page
+            {navItems.map((item) => {
+              if (item.label === 'Demo') {
+                return (
+                  <div key={item.page} className="relative group">
+                    <button
+                      className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${(currentPage === 'demo' || currentPage === 'demo-commodities')
+                        ? 'text-[#22c55e] bg-[#22c55e]/10'
+                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                      {item.label}
+                      <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
+                    </button>
+                    {/* Dropdown Menu */}
+                    <div className="absolute left-0 mt-1 w-48 bg-[#0a0e1a] border border-[#2d3748] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden z-50">
+                      <div className="py-2">
+                        <button
+                          onClick={() => onPageChange('demo')}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${currentPage === 'demo' ? 'text-[#22c55e] bg-[#22c55e]/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                        >
+                          Indian Market
+                        </button>
+                        <button
+                          onClick={() => onPageChange('demo-commodities')}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${currentPage === 'demo-commodities' ? 'text-[#22c55e] bg-[#22c55e]/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                        >
+                          Commodities
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <button
+                  key={item.page}
+                  onClick={() => onPageChange(item.page)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === item.page
                     ? 'text-[#22c55e] bg-[#22c55e]/10'
                     : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
-                  }`}
-              >
-                {item.label}
-              </button>
-            ))}
+                    }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
 
           {/* Auth Buttons */}
@@ -77,21 +111,55 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#111827] border-b border-[#2d3748]">
           <nav className="px-4 py-4 space-y-2">
-            {navItems.map((item) => (
-              <button
-                key={item.page}
-                onClick={() => {
-                  onPageChange(item.page);
-                  setMobileMenuOpen(false);
-                }}
-                className={`block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === item.page
+            {navItems.map((item) => {
+              if (item.label === 'Demo') {
+                return (
+                  <div key={item.page} className="space-y-1">
+                    <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Demo Trading</div>
+                    <button
+                      onClick={() => {
+                        onPageChange('demo');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`block w-full text-left pl-8 pr-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'demo'
+                        ? 'text-[#22c55e] bg-[#22c55e]/10'
+                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                      Indian Market
+                    </button>
+                    <button
+                      onClick={() => {
+                        onPageChange('demo-commodities');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`block w-full text-left pl-8 pr-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'demo-commodities'
+                        ? 'text-[#22c55e] bg-[#22c55e]/10'
+                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                      Commodities
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={item.page}
+                  onClick={() => {
+                    onPageChange(item.page);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === item.page
                     ? 'text-[#22c55e] bg-[#22c55e]/10'
                     : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
-                  }`}
-              >
-                {item.label}
-              </button>
-            ))}
+                    }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
             <div className="pt-4 border-t border-[#2d3748] space-y-2">
               <Button
                 variant="outline"

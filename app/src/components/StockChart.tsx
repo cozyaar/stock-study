@@ -9,13 +9,15 @@ interface StockChartProps {
     symbol: string;
     interval: string;
     indicators: any;
+    chartType?: 'candle' | 'line';
     onOpenSettings?: (key: string) => void;
 }
 
-const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicators, onOpenSettings }) => {
+const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicators, chartType = 'candle', onOpenSettings }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<any>(null);
     const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+    const priceLineRef = useRef<ISeriesApi<"Line"> | null>(null);
     const smaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
     const emaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
     const bbUpperRef = useRef<ISeriesApi<"Line"> | null>(null);
@@ -50,14 +52,16 @@ const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicat
             timeScale: {
                 timeVisible: true,
                 secondsVisible: false,
-                tickMarkFormatter: (time: number) => {
-                    return new Intl.DateTimeFormat('en-IN', {
-                        timeZone: 'Asia/Kolkata',
-                        hour: 'numeric',
-                        minute: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    }).format(new Date(time * 1000));
+                tickMarkFormatter: (time: number, tickMarkType: any) => {
+                    const dt = new Date(time * 1000);
+                    // Lightweight Charts TickMarkType: 0 = Year, 1 = Month, 2 = DayOfMonth, 3 = Time, 4 = TimeWithSeconds
+                    if (tickMarkType === 0) {
+                        return dt.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+                    } else if (tickMarkType === 1 || tickMarkType === 2) {
+                        return dt.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric' });
+                    } else {
+                        return dt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+                    }
                 }
             },
             localization: {
@@ -83,6 +87,12 @@ const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicat
             borderVisible: false,
             wickUpColor: '#22c55e',
             wickDownColor: '#ef4444',
+        });
+
+        const priceLine = chart.addSeries(LineSeries, {
+            color: '#3b82f6',
+            lineWidth: 2,
+            crosshairMarkerVisible: true,
         });
 
         const smaSeries = chart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 2, crosshairMarkerVisible: false }); // Blue
@@ -117,6 +127,7 @@ const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicat
 
         chartRef.current = chart;
         seriesRef.current = series;
+        priceLineRef.current = priceLine;
         smaSeriesRef.current = smaSeries;
         emaSeriesRef.current = emaSeries;
         vwapRef.current = vwapSeries;
@@ -164,6 +175,17 @@ const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicat
         const cleanData = Array.from(uniqueMap.values());
 
         seriesRef.current.setData(cleanData);
+        if (priceLineRef.current) {
+            priceLineRef.current.setData(cleanData.map(d => ({ time: d.time, value: d.close })));
+        }
+
+        if (chartType === 'line') {
+            seriesRef.current.applyOptions({ visible: false });
+            if (priceLineRef.current) priceLineRef.current.applyOptions({ visible: true });
+        } else {
+            seriesRef.current.applyOptions({ visible: true });
+            if (priceLineRef.current) priceLineRef.current.applyOptions({ visible: false });
+        }
 
         const closePrices = cleanData.map(d => d.close);
         const highPrices = cleanData.map(d => d.high);
@@ -327,7 +349,7 @@ const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicat
             }
         }
 
-    }, [data, indicators]);
+    }, [data, indicators, chartType]);
 
     return (
         <div className="w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">

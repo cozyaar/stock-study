@@ -135,17 +135,41 @@ app.get('/api/search', (req, res) => {
 // LTP API
 app.get('/api/ltp', async (req, res) => {
     const { instrument_key } = req.query;
-    const instrument = instruments.find(i => i.instrument_key === instrument_key);
-    if (!instrument) return res.status(404).json({ error: 'Instrument not found' });
+    let yfSymbol = '';
+    let isCommodity = false;
 
-    let yfSymbol = instrument.symbol;
-    if (instrument.exchange === 'NSE_EQ') yfSymbol += '.NS';
-    else if (instrument.exchange === 'BSE_EQ') yfSymbol += '.BO';
-    else yfSymbol += '.NS';
+    if (instrument_key.startsWith('COMM|')) {
+        isCommodity = true;
+        if (instrument_key === 'COMM|CRUDEOIL') yfSymbol = 'CL=F';
+        else if (instrument_key === 'COMM|NATURALGAS') yfSymbol = 'NG=F';
+        else if (instrument_key === 'COMM|GOLD') yfSymbol = 'GC=F';
+        else if (instrument_key === 'COMM|SILVER') yfSymbol = 'SI=F';
+    } else {
+        const instrument = instruments.find(i => i.instrument_key === instrument_key);
+        if (!instrument) return res.status(404).json({ error: 'Instrument not found' });
+        yfSymbol = instrument.symbol;
+        if (instrument.exchange === 'NSE_EQ') yfSymbol += '.NS';
+        else if (instrument.exchange === 'BSE_EQ') yfSymbol += '.BO';
+        else yfSymbol += '.NS';
+    }
 
     try {
         const quote = await yahooFinance.quote(yfSymbol);
-        res.json({ last_price: quote.regularMarketPrice });
+        let multiplier = 1;
+        if (isCommodity) {
+            if (instrument_key === 'COMM|GOLD') multiplier = 83 / 3.11; // 10g equivalent INR
+            else if (instrument_key === 'COMM|SILVER') multiplier = 83 * 32.15; // 1kg equivalent INR
+            else multiplier = 83; // crude oil and gas in standard base INR conversion
+        }
+
+        res.json({
+            last_price: quote.regularMarketPrice * multiplier,
+            dayHigh: quote.regularMarketDayHigh * multiplier,
+            dayLow: quote.regularMarketDayLow * multiplier,
+            open: quote.regularMarketOpen * multiplier,
+            prevClose: quote.regularMarketPreviousClose * multiplier,
+            volume: quote.regularMarketVolume
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -154,13 +178,23 @@ app.get('/api/ltp', async (req, res) => {
 // Intraday API
 app.get('/api/intraday', async (req, res) => {
     const { instrument_key, interval = '1m' } = req.query;
-    const instrument = instruments.find(i => i.instrument_key === instrument_key);
-    if (!instrument) return res.status(404).json({ error: 'Instrument not found' });
+    let yfSymbol = '';
+    let isCommodity = false;
 
-    let yfSymbol = instrument.symbol;
-    if (instrument.exchange === 'NSE_EQ') yfSymbol += '.NS';
-    else if (instrument.exchange === 'BSE_EQ') yfSymbol += '.BO';
-    else yfSymbol += '.NS';
+    if (instrument_key.startsWith('COMM|')) {
+        isCommodity = true;
+        if (instrument_key === 'COMM|CRUDEOIL') yfSymbol = 'CL=F';
+        else if (instrument_key === 'COMM|NATURALGAS') yfSymbol = 'NG=F';
+        else if (instrument_key === 'COMM|GOLD') yfSymbol = 'GC=F';
+        else if (instrument_key === 'COMM|SILVER') yfSymbol = 'SI=F';
+    } else {
+        const instrument = instruments.find(i => i.instrument_key === instrument_key);
+        if (!instrument) return res.status(404).json({ error: 'Instrument not found' });
+        yfSymbol = instrument.symbol;
+        if (instrument.exchange === 'NSE_EQ') yfSymbol += '.NS';
+        else if (instrument.exchange === 'BSE_EQ') yfSymbol += '.BO';
+        else yfSymbol += '.NS';
+    }
 
     let period1;
     if (interval === '1m') {
@@ -176,14 +210,21 @@ app.get('/api/intraday', async (req, res) => {
     try {
         const chart = await yahooFinance.chart(yfSymbol, { interval, period1 });
 
+        let multiplier = 1;
+        if (isCommodity) {
+            if (instrument_key === 'COMM|GOLD') multiplier = 83 / 3.11;
+            else if (instrument_key === 'COMM|SILVER') multiplier = 83 * 32.15;
+            else multiplier = 83;
+        }
+
         const candles = chart.quotes
             .filter(q => q.open !== null && q.open !== undefined)
             .map(q => ({
                 time: new Date(q.date).getTime() / 1000,
-                open: q.open,
-                high: q.high,
-                low: q.low,
-                close: q.close,
+                open: q.open * multiplier,
+                high: q.high * multiplier,
+                low: q.low * multiplier,
+                close: q.close * multiplier,
                 volume: q.volume
             }));
 

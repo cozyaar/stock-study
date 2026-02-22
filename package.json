@@ -1,0 +1,16 @@
+{
+    "name": "stock-study-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "vercel dev",
+        "build": "npm --prefix app install && npm --prefix app run build"
+    },
+    "dependencies": {
+        "yahoo-finance2": "^4.1.0"
+    },
+    "devDependencies": {
+        "@vercel/node": "^5.0.0",
+        "typescript": "^5.7.3"
+    }
+}

@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import StockSearch from '../components/StockSearch';
 import type { Instrument } from '../components/StockSearch';
 import StockChart from '../components/StockChart';
-import { Search, SlidersHorizontal, ArrowRightLeft, Briefcase, TrendingUp, X, BarChart2, LineChart } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowRightLeft, Briefcase, X, BarChart2, LineChart } from 'lucide-react';
 import { useDemoStore } from '../store/demoStore';
 
-const DemoTrading: React.FC = () => {
-    const [selectedStock, setSelectedStock] = useState<Instrument | null>(null);
+const COMMODITIES: Instrument[] = [
+    { instrument_key: "COMM|GOLD", symbol: "GOLD", name: "Gold (10g)", exchange: "MCX" },
+    { instrument_key: "COMM|SILVER", symbol: "SILVER", name: "Silver (1kg)", exchange: "MCX" },
+    { instrument_key: "COMM|CRUDEOIL", symbol: "CRUDEOIL", name: "Crude Oil", exchange: "MCX" },
+    { instrument_key: "COMM|NATURALGAS", symbol: "NATURALGAS", name: "Natural Gas", exchange: "MCX" },
+];
+
+const DemoCommoditiesTrading: React.FC = () => {
+    const [selectedStock, setSelectedStock] = useState<Instrument | null>(COMMODITIES[0]);
     const [ltp, setLtp] = useState<number | null>(null);
     const [prevLtp, setPrevLtp] = useState<number | null>(null);
     const [chartData, setChartData] = useState<any[]>([]);
@@ -221,12 +227,30 @@ const DemoTrading: React.FC = () => {
                 <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8 mt-4">
                     <div>
                         <h1 className="text-3xl md:text-5xl font-extrabold text-[#22c55e] drop-shadow-sm mb-2">
-                            Pro Terminal
+                            Commodities Pro
                         </h1>
-                        <p className="text-slate-400 font-medium tracking-wide">Advanced Real-time Demo Trading</p>
+                        <p className="text-slate-400 font-medium tracking-wide">Advanced Commodities Trading</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full xl:w-auto">
-                        <StockSearch onSelect={handleSelectStock} />
+
+                        <div className="flex bg-[#1a2234] border border-[#2d3748] rounded-xl overflow-hidden shadow-lg p-1 mr-4">
+                            {COMMODITIES.map(comm => {
+                                const isActive = selectedStock?.instrument_key === comm.instrument_key;
+                                return (
+                                    <button
+                                        key={comm.instrument_key}
+                                        onClick={() => handleSelectStock(comm)}
+                                        className={`px-6 py-2.5 text-sm font-bold tracking-wide rounded-lg transition-all ${isActive
+                                            ? 'bg-[#22c55e] text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        {comm.name}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
                         {selectedStock && (
                             <div className="bg-[#1a2234] border border-[#2d3748] px-6 py-2 rounded-xl flex flex-col items-center xl:items-end shadow-lg h-[50px] justify-center ml-2">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Available Cash</span>
@@ -236,7 +260,7 @@ const DemoTrading: React.FC = () => {
                     </div>
                 </header>
 
-                {selectedStock ? (
+                {selectedStock && (
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
                         {/* Main Chart Area */}
@@ -545,18 +569,10 @@ const DemoTrading: React.FC = () => {
 
                         </div>
                     </div>
-                ) : (
-                    <div className="flex flex-col items-center justify-center py-[20vh] border-2 border-dashed border-[#2d3748] rounded-3xl bg-[#0a0e1a]/50 backdrop-blur-sm">
-                        <div className="bg-[#1a2234] p-6 rounded-3xl mb-6 shadow-inner border border-[#2d3748]">
-                            <TrendingUp size={56} className="text-[#22c55e] drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]" />
-                        </div>
-                        <h2 className="text-3xl font-bold text-white mb-3">Your Journey Starts Here</h2>
-                        <p className="text-slate-400 max-w-md text-center">Search for a company using the search bar above to view real-time charts, indicators, and execute demo trades.</p>
-                    </div>
                 )}
             </div>
         </div>
     );
 };
 
-export default DemoTrading;
+export default DemoCommoditiesTrading;
