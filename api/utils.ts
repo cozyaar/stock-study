@@ -1,4 +1,4 @@
-import axios from "axios";
+import fetch from "node-fetch";
 import csv from "csv-parser";
 import { Readable } from "stream";
 import zlib from "zlib";
@@ -26,13 +26,13 @@ export async function getInstruments(): Promise<Instrument[]> {
             const exchanges = ['NSE', 'BSE'];
             let all: Instrument[] = [];
             for (const exch of exchanges) {
-                const res = await axios.get(`https://assets.upstox.com/market-quote/instruments/exchange/${exch}.csv.gz`, {
-                    responseType: 'arraybuffer'
-                });
+                const res = await fetch(`https://assets.upstox.com/market-quote/instruments/exchange/${exch}.csv.gz`);
+                const arrayBuffer = await res.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
                 const results: Instrument[] = [];
 
                 // Unzip the gzip buffer
-                const unzipped = zlib.gunzipSync(res.data);
+                const unzipped = zlib.gunzipSync(buffer);
                 const stream = Readable.from(unzipped);
 
                 await new Promise<void>((resolve) => {

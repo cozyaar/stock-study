@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import axios from "axios";
+import fetch from "node-fetch";
 import { getInstruments } from "./utils";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -37,11 +37,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     else if (intervalStr === "1d") rangeQuery = "1y";
 
     try {
-        const yahooRes = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${yfSymbol}?interval=${intervalStr}&range=${rangeQuery}`, {
+        const yahooRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yfSymbol}?interval=${intervalStr}&range=${rangeQuery}`, {
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
         });
-
-        const chartData = yahooRes.data.chart.result[0];
+        const data = await yahooRes.json();
+        const chartData = data.chart.result[0];
         if (!chartData.timestamp || !chartData.indicators.quote[0]) {
             return res.status(200).json([]);
         }

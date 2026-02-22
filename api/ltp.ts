@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import axios from "axios";
+import fetch from "node-fetch";
 import { getInstruments } from "./utils";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -29,11 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        const yahooRes = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${yfSymbol}?interval=1m&range=1d`, {
+        const yahooRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yfSymbol}?interval=1m&range=1d`, {
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
         });
-
-        const meta = yahooRes.data.chart.result[0].meta;
+        const data = await yahooRes.json();
+        const meta = data.chart.result[0].meta;
         let multiplier = 1;
 
         if (isCommodity) {
