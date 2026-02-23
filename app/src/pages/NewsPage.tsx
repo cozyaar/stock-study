@@ -18,6 +18,10 @@ interface AnalyzedSetup {
     swingScore: number;
     reasons: string[];
     type: 'Bullish' | 'Bearish' | 'Neutral';
+    entry: string;
+    target: string;
+    stoploss: string;
+    marginInfo: string;
 }
 
 export function NewsPage() {
@@ -79,6 +83,29 @@ export function NewsPage() {
                         )}
                     </ul>
                 </div>
+
+                {setup.entry !== 'N/A' && (
+                    <div className="mt-4 bg-[#0a0e1a]/60 p-3 rounded-lg border border-gray-800/80 shadow-inner">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Entry (CMP)</p>
+                                <p className="text-sm font-bold text-gray-200">₹{setup.entry}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Target Exp.</p>
+                                <p className="text-sm font-bold text-[#22c55e]">₹{setup.target}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Stoploss</p>
+                                <p className="text-sm font-bold text-red-400">₹{setup.stoploss}</p>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-center text-gray-400 mt-2 font-mono flex items-center justify-center">
+                            <Zap className="w-3 h-3 mr-1 text-yellow-500" />
+                            {setup.marginInfo}
+                        </p>
+                    </div>
+                )}
 
                 <div className="mt-4 pt-3 border-t border-gray-800/50 flex justify-between items-center text-xs">
                     <span className="flex items-center text-gray-400">

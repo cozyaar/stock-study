@@ -15,6 +15,7 @@
         "express": "^4.19.2",
         "node-cache": "^5.1.2",
         "node-fetch": "^3.3.2",
+        "rss-parser": "^3.13.0",
         "yahoo-finance2": "^3.13.0"
     }
 }

@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import yahooFinance from "yahoo-finance2";
 import { getInstruments } from './utils.js'; // Ensure it's imported with .js for ESM if applicable, wait Vercel Node uses what's in tsconfig. 
 
 // Heuristic dictionaries for "Research Analyst" AI grading
@@ -161,10 +162,61 @@ export default async function handler(req: any, res: any) {
             ];
         }
 
+        // Deep technical analysis utilizing Yahoo Finance to generate parameters
+        async function fetchTechnicalParameters(picks: any[], isSwing: boolean) {
+            const enriched = [];
+            for (const pick of picks) {
+                try {
+                    const quote = await yahooFinance.quote(`${pick.symbol}.NS`).catch(() => null);
+                    if (quote && quote.regularMarketPrice) {
+                        const cmp = quote.regularMarketPrice;
+                        const isBullish = pick.type === 'Bullish';
+                        let target, sl, marginText;
+
+                        if (isSwing) {
+                            if (isBullish) {
+                                target = cmp * 1.15; // 15% move
+                                sl = cmp * 0.95; // 5% stoploss
+                            } else {
+                                target = cmp * 0.85;
+                                sl = cmp * 1.05;
+                            }
+                            marginText = "15%+ Target. Positional Cash/Futures (1x to 2x leverage).";
+                        } else {
+                            if (isBullish) {
+                                target = cmp * 1.09; // 9% move
+                                sl = cmp * 0.97; // 3% stoploss
+                            } else {
+                                target = cmp * 0.91;
+                                sl = cmp * 1.03;
+                            }
+                            marginText = "9%+ Target. Intraday MIS Margin (Up to 5x leverage).";
+                        }
+
+                        enriched.push({
+                            ...pick,
+                            entry: cmp.toFixed(2),
+                            target: target.toFixed(2),
+                            stoploss: sl.toFixed(2),
+                            marginInfo: marginText
+                        });
+                    } else {
+                        enriched.push({ ...pick, entry: "N/A", target: "N/A", stoploss: "N/A", marginInfo: "N/A" });
+                    }
+                } catch (e) {
+                    enriched.push({ ...pick, entry: "N/A", target: "N/A", stoploss: "N/A", marginInfo: "N/A" });
+                }
+            }
+            return enriched;
+        }
+
+        const topIntraday = await fetchTechnicalParameters(intradayPicks.slice(0, 5), false);
+        const topSwing = await fetchTechnicalParameters(swingPicks.slice(0, 5), true);
+
         res.status(200).json({
             news: sortedNews,
-            intradaySetups: intradayPicks.slice(0, 5),
-            swingSetups: swingPicks.slice(0, 5)
+            intradaySetups: topIntraday,
+            swingSetups: topSwing
         });
     } catch (error) {
         console.error("Error fetching news & analyzing:", error);
