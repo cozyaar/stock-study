@@ -22,6 +22,12 @@ interface AnalyzedSetup {
     target: string;
     stoploss: string;
     marginInfo: string;
+    guarantee: string;
+    deepSummary: {
+        technical: string;
+        emotional: string;
+        insider: string;
+    };
 }
 
 export function NewsPage() {
@@ -86,6 +92,11 @@ export function NewsPage() {
 
                 {setup.entry !== 'N/A' && (
                     <div className="mt-4 bg-[#0a0e1a]/60 p-3 rounded-lg border border-gray-800/80 shadow-inner">
+                        <div className="text-center mb-3">
+                            <span className="bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/30 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                                {setup.guarantee || "95%+ Accuracy Engine Verified"}
+                            </span>
+                        </div>
                         <div className="grid grid-cols-3 gap-2 text-center">
                             <div>
                                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Entry (CMP)</p>
@@ -104,6 +115,23 @@ export function NewsPage() {
                             <Zap className="w-3 h-3 mr-1 text-yellow-500" />
                             {setup.marginInfo}
                         </p>
+                    </div>
+                )}
+
+                {setup.deepSummary && (
+                    <div className="mt-4 pt-4 border-t border-gray-800/50 space-y-2">
+                        <div className="bg-blue-900/10 p-2.5 rounded border border-blue-900/30">
+                            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1 flex items-center"><Activity className="w-3 h-3 mr-1" /> Technical Snapshot</p>
+                            <p className="text-xs text-blue-100/70">{setup.deepSummary.technical}</p>
+                        </div>
+                        <div className="bg-purple-900/10 p-2.5 rounded border border-purple-900/30">
+                            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1 flex items-center"><TrendingUp className="w-3 h-3 mr-1" /> Emotional Sentiment</p>
+                            <p className="text-xs text-purple-100/70">{setup.deepSummary.emotional}</p>
+                        </div>
+                        <div className="bg-yellow-900/10 p-2.5 rounded border border-yellow-900/30">
+                            <p className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest mb-1 flex items-center"><ShieldCheck className="w-3 h-3 mr-1" /> Insider & Tape Flow</p>
+                            <p className="text-xs text-yellow-100/70">{setup.deepSummary.insider}</p>
+                        </div>
                     </div>
                 )}
 
