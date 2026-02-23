@@ -6,8 +6,9 @@ import DemoTrading from './pages/DemoTrading';
 import DemoCommoditiesTrading from './pages/DemoCommoditiesTrading';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
+import { NewsPage } from './pages/NewsPage';
 
-export type Page = 'home' | 'learner' | 'demo' | 'demo-commodities' | 'about' | 'contact';
+export type Page = 'home' | 'learner' | 'demo' | 'demo-commodities' | 'about' | 'contact' | 'news';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -22,6 +23,7 @@ function App() {
         {currentPage === 'demo-commodities' && <DemoCommoditiesTrading />}
         {currentPage === 'about' && <AboutPage />}
         {currentPage === 'contact' && <ContactPage />}
+        {currentPage === 'news' && <NewsPage />}
       </main>
     </div>
   );

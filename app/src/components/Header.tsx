@@ -12,6 +12,7 @@ const navItems: { label: string; page: Page }[] = [
   { label: 'Home', page: 'home' },
   { label: 'Learner', page: 'learner' },
   { label: 'Demo', page: 'demo' },
+  { label: 'News & Setups', page: 'news' },
   { label: 'About', page: 'about' },
   { label: 'Contact', page: 'contact' },
 ];
