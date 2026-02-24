@@ -192,7 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        const HIGH_BETA_SYMBOLS = [
+        const ALL_SYMBOLS = [
             "SUZLON", "IREDA", "RVNL", "IRFC", "HAL", "BSE", "ZOMATO", "PAYTM",
             "JIOFIN", "MAZDOCK", "COCHINSHIP", "HUDCO", "NBCC", "OLECTRA", "JSWINFRA",
             "ANGELONE", "CDSL", "TATAINVEST", "KALYANKJIL", "VBL", "RELIANCE", "TCS", "INFY",
@@ -201,11 +201,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "TITAN", "BAJAJFINSV", "ASIANPAINT", "HCLTECH"
         ];
 
+        // Vercel Serverless Function has a 10-second limit. We shuffle and slice 12 random symbols per execution for concurrent evaluation.
+        const HIGH_BETA_SYMBOLS = ALL_SYMBOLS.sort(() => 0.5 - Math.random()).slice(0, 12);
+
         let rawPicks = new Map();
         const instruments = await getInstruments();
 
         for (const symbol of HIGH_BETA_SYMBOLS) {
-            let inst = instruments.find(i => i.symbol === symbol);
+            let inst = instruments.find((i: any) => i.symbol === symbol);
             rawPicks.set(symbol, {
                 symbol: symbol,
                 name: inst ? inst.name : symbol,
@@ -214,10 +217,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        const verifiedSwing = [];
-        const verifiedIntra = [];
+        const verifiedSwing: any[] = [];
+        const verifiedIntra: any[] = [];
 
-        for (const candidate of rawPicks.values()) {
+        const candidates = Array.from(rawPicks.values());
+
+        // Execute all 12 Yahoo Finance calls concurrently to maximize Vercel Edge compute efficiency
+        await Promise.all(candidates.map(async (candidate: any) => {
             const quantData = await checkTechnicalCatalyst(candidate.symbol);
             if (quantData) {
                 const finalProfile = {
@@ -239,7 +245,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     verifiedIntra.push(finalProfile);
                 }
             }
-        }
+        }));
 
         verifiedSwing.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
         verifiedIntra.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
