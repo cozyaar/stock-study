@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Clock, Activity, ShieldCheck, Zap } from 'lucide-react';
+import { useDemoStore } from '../store/demoStore';
 
 interface NewsItem {
     title: string;
@@ -30,12 +31,17 @@ interface AnalyzedSetup {
     };
 }
 
-export function NewsPage() {
+interface NewsPageProps {
+    onPageChange?: (page: any) => void;
+}
+
+export function NewsPage({ onPageChange }: NewsPageProps) {
     const [news, setNews] = useState<NewsItem[]>([]);
     const [intradaySetups, setIntradaySetups] = useState<AnalyzedSetup[]>([]);
     const [swingSetups, setSwingSetups] = useState<AnalyzedSetup[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'swing' | 'intraday'>('swing');
+    const { setActiveSymbol } = useDemoStore();
 
     useEffect(() => {
         // Fetch algorithmically curated news and setups
@@ -63,7 +69,14 @@ export function NewsPage() {
         const confidence = Math.min(99, 85 + (score * 2.5)).toFixed(1);
 
         return (
-            <div key={setup.symbol} className={`p-4 rounded-xl border relative overflow-hidden shadow-lg transition-transform hover:scale-[1.02] ${bgClass}`}>
+            <div
+                key={setup.symbol}
+                onClick={() => {
+                    setActiveSymbol(setup.symbol);
+                    if (onPageChange) onPageChange('demo');
+                }}
+                className={`p-4 rounded-xl border relative overflow-hidden shadow-lg transition-transform hover:scale-[1.02] cursor-pointer ${bgClass}`}
+            >
                 <div className="absolute top-0 right-0 p-2 flex items-center bg-[#0a0e1a]/80 backdrop-blur-sm rounded-bl-xl border-l border-b border-gray-800">
                     <span className={`text-xs font-bold ${colorClass} mr-2`}>
                         {confidence}% Match

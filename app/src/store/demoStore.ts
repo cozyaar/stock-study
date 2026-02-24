@@ -8,6 +8,7 @@ export interface Position {
 
 let globalCash = 500000;
 let globalPositions: Record<string, Position> = {};
+let globalActiveSymbol: string | null = null;
 const listeners: Set<() => void> = new Set();
 
 const emitChange = () => {
@@ -35,5 +36,10 @@ export const useDemoStore = () => {
         emitChange();
     };
 
-    return { cash: globalCash, setCash, positions: globalPositions, setPositions };
+    const setActiveSymbol = (symbol: string | null) => {
+        globalActiveSymbol = symbol;
+        emitChange();
+    };
+
+    return { cash: globalCash, setCash, positions: globalPositions, setPositions, activeSymbol: globalActiveSymbol, setActiveSymbol };
 };

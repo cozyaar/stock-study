@@ -139,7 +139,22 @@ const DemoTrading: React.FC = () => {
 
     // Trading state
     const [qty, setQty] = useState<number>(1);
-    const { cash, setCash, positions, setPositions } = useDemoStore();
+    const { cash, setCash, positions, setPositions, activeSymbol, setActiveSymbol } = useDemoStore();
+
+    useEffect(() => {
+        if (activeSymbol) {
+            axios.get(`/api/search?q=${activeSymbol}`).then(res => {
+                const matches = res.data;
+                const exactMatch = matches.find((m: any) => m.symbol === activeSymbol);
+                if (exactMatch) {
+                    handleSelectStock(exactMatch);
+                } else if (matches.length > 0) {
+                    handleSelectStock(matches[0]);
+                }
+                setActiveSymbol(null); // Clear after selecting
+            }).catch(console.error);
+        }
+    }, [activeSymbol, setActiveSymbol]);
 
     const fetchStockData = async (instrument: Instrument, timeframe: string) => {
         try {
@@ -188,7 +203,7 @@ const DemoTrading: React.FC = () => {
                     });
                 })
                 .catch(() => { });
-        }, 2000); // Poll LTP every 2s when market open
+        }, 100); // Poll LTP every 0.1s when market open for instant candles
         return () => clearInterval(intervalId);
     }, [selectedStock, interval]);
 

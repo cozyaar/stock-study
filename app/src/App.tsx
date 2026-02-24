@@ -23,7 +23,7 @@ function App() {
         {currentPage === 'demo-commodities' && <DemoCommoditiesTrading />}
         {currentPage === 'about' && <AboutPage />}
         {currentPage === 'contact' && <ContactPage />}
-        {currentPage === 'news' && <NewsPage />}
+        {currentPage === 'news' && <NewsPage onPageChange={setCurrentPage} />}
       </main>
     </div>
   );

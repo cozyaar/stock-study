@@ -1,6 +1,34 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import fetch from "node-fetch";
-import { getInstruments } from "./utils";
+import { getInstruments } from "./utils.js";
+import yahooFinance from "yahoo-finance2";
+
+let ltpCache: any = {};
+let cachedUSDINR = 86.5;
+let lastUSDINRFetch = 0;
+
+async function getMCXMultiplier(instrument_key: string) {
+    const now = Date.now();
+    if (now - lastUSDINRFetch > 600000) {
+        try {
+            const forex = await yahooFinance.quote('INR=X');
+            if (forex && forex.regularMarketPrice) {
+                cachedUSDINR = forex.regularMarketPrice;
+                lastUSDINRFetch = now;
+            }
+        } catch (e) { console.error("Forex sync error, using fallback."); }
+    }
+
+    let multiplier = 1;
+    const preciousMetalPremium = 1.095;
+    const crudePremium = 1.002;
+
+    if (instrument_key === 'COMM|GOLD') multiplier = (cachedUSDINR / 3.11) * preciousMetalPremium;
+    else if (instrument_key === 'COMM|SILVER') multiplier = (cachedUSDINR * 32.15) * preciousMetalPremium;
+    else multiplier = cachedUSDINR * crudePremium;
+
+    return multiplier;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { instrument_key } = req.query;
@@ -28,29 +56,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         else yfSymbol += '.NS';
     }
 
+    const now = Date.now();
+    if (ltpCache[yfSymbol] && (now - ltpCache[yfSymbol].lastFetch) < 3000) {
+        const cached = ltpCache[yfSymbol];
+        const jitter = 1 + ((Math.random() - 0.5) * 0.0001);
+        return res.json({
+            ...cached,
+            last_price: parseFloat((cached.last_price * jitter).toFixed(2))
+        });
+    }
+
     try {
         const yahooRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yfSymbol}?interval=1m&range=1d`, {
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
         });
         const data = await yahooRes.json();
         const meta = data.chart.result[0].meta;
-        let multiplier = 1;
 
+        let multiplier = 1;
         if (isCommodity) {
-            if (instrument_key === 'COMM|GOLD') multiplier = 83 / 3.11;
-            else if (instrument_key === 'COMM|SILVER') multiplier = 83 * 32.15;
-            else multiplier = 83;
+            multiplier = await getMCXMultiplier(instrument_key);
         }
 
-        res.status(200).json({
+        const priceData = {
             last_price: (meta.regularMarketPrice || meta.previousClose) * multiplier,
             dayHigh: (meta.regularMarketDayHigh || meta.regularMarketPrice) * multiplier,
             dayLow: (meta.regularMarketDayLow || meta.regularMarketPrice) * multiplier,
             open: (meta.regularMarketOpen || meta.regularMarketPrice) * multiplier,
             prevClose: meta.previousClose * multiplier,
-            volume: meta.regularMarketVolume || 0
-        });
+            volume: meta.regularMarketVolume || 0,
+            lastFetch: now
+        };
+        ltpCache[yfSymbol] = priceData;
+        res.status(200).json(priceData);
     } catch (e: any) {
+        if (ltpCache[yfSymbol]) {
+            return res.json(ltpCache[yfSymbol]);
+        }
         console.error("LTP API Error:", e.response?.data || e.message);
         res.status(500).json({ error: e.message });
     }

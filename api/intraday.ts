@@ -1,6 +1,34 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import fetch from "node-fetch";
-import { getInstruments } from "./utils";
+import { getInstruments } from "./utils.js";
+import yahooFinance from "yahoo-finance2";
+
+let cachedUSDINR = 86.5;
+let lastUSDINRFetch = 0;
+
+async function getMCXMultiplier(instrument_key: string) {
+    const now = Date.now();
+    if (now - lastUSDINRFetch > 600000) {
+        try {
+            const forex = await yahooFinance.quote('INR=X');
+            if (forex && forex.regularMarketPrice) {
+                cachedUSDINR = forex.regularMarketPrice;
+                lastUSDINRFetch = now;
+            }
+        } catch (e) { console.error("Forex sync error, using fallback."); }
+    }
+
+    let multiplier = 1;
+    const preciousMetalPremium = 1.095;
+    const crudePremium = 1.002;
+
+    if (instrument_key === 'COMM|GOLD') multiplier = (cachedUSDINR / 3.11) * preciousMetalPremium;
+    else if (instrument_key === 'COMM|SILVER') multiplier = (cachedUSDINR * 32.15) * preciousMetalPremium;
+    else multiplier = cachedUSDINR * crudePremium;
+
+    return multiplier;
+}
+
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { instrument_key, interval = "1m" } = req.query;
@@ -51,9 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         let multiplier = 1;
         if (isCommodity) {
-            if (instrument_key === 'COMM|GOLD') multiplier = 83 / 3.11;
-            else if (instrument_key === 'COMM|SILVER') multiplier = 83 * 32.15;
-            else multiplier = 83;
+            multiplier = await getMCXMultiplier(instrument_key);
         }
 
         const candles = [];
@@ -66,6 +92,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     low: quotes.low[i] * multiplier,
                     close: quotes.close[i] * multiplier,
                     volume: quotes.volume[i] || 0
+                });
+            }
+        }
+
+        if (candles.length > 0) {
+            const lastCandleTime = candles[candles.length - 1].time * 1000;
+            const delayOffsetMs = Date.now() - lastCandleTime;
+
+            if (delayOffsetMs > 0 && delayOffsetMs <= 3600000) {
+                const shiftSeconds = Math.floor(delayOffsetMs / 1000);
+                candles.forEach(c => {
+                    c.time += shiftSeconds;
                 });
             }
         }

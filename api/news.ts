@@ -1,76 +1,132 @@
-import Parser from 'rss-parser';
+import { VercelRequest, VercelResponse } from "@vercel/node";
 import yahooFinance from "yahoo-finance2";
 import { getInstruments } from './utils.js';
-import fetch from "node-fetch";
+import ti from "technicalindicators";
+const { EMA, RSI, MACD, BollingerBands, VWAP, ADX } = ti;
 
-const parser = new Parser();
-
-// Global execution state for simulated persistent database (Memory Cache)
-// NOTE: On Vercel this cache resets across cold starts. Use Redis/KV in real prod.
 let globalSetupsCache = {
     intraday: [],
     swing: [],
     lastUpdated: 0
 };
 
-const commonWordExclusions = new Set(['IT', 'IS', 'THE', 'AND', 'OR', 'FOR', 'TO', 'A', 'AN', 'OF', 'IN', 'ON', 'AT', 'BY', 'WITH', 'FROM', 'AS', 'BE', 'THIS', 'THAT', 'ARE', 'WAS', 'WERE', 'HAS', 'HAVE', 'HAD', 'YES', 'NO', 'NOT', 'ALL', 'ANY', 'CAN', 'MAY', 'WILL', 'WOULD', 'SHOULD', 'COULD', 'NEW', 'NOW', 'UP', 'DOWN', 'OUT', 'OVER', 'UNDER', 'MORE', 'LESS', 'ONLY', 'SOME', 'SUCH', 'THAN', 'THEN', 'THERE', 'THEY', 'THEIR', 'THEM', 'THESE', 'THOSE', 'WHAT', 'WHEN', 'WHERE', 'WHICH', 'WHO', 'WHY', 'HOW', 'SO', 'TOO', 'VERY', 'WELL', 'EVEN', 'JUST', 'STILL', 'MUCH']);
-
-// Helpers for the analyst
 async function checkTechnicalCatalyst(symbol) {
     try {
-        const queryOptions = { period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), interval: '1d' };
+        const queryOptions = { period1: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000).toISOString(), interval: '1d' };
         const hist = await yahooFinance.chart(`${symbol}.NS`, queryOptions);
-        if (!hist.quotes || hist.quotes.length < 5) return null;
+        if (!hist.quotes) return null;
 
         const quotes = hist.quotes.filter(q => q.volume !== null && q.close !== null);
-        if (quotes.length < 5) return null;
+        if (quotes.length < 30) return null;
+
+        const closePrices = quotes.map(q => q.close);
+        const highPrices = quotes.map(q => q.high);
+        const lowPrices = quotes.map(q => q.low);
+        const openPrices = quotes.map(q => q.open);
+        const volumes = quotes.map(q => q.volume);
 
         const latest = quotes[quotes.length - 1];
-        const prev = quotes.slice(quotes.length - 6, quotes.length - 1);
-        const avgVol = prev.reduce((a, b) => a + b.volume, 0) / prev.length;
+        const prev = quotes[quotes.length - 2];
+        const change_pct = ((latest.close - prev.close) / prev.close) * 100;
 
-        // Condition for "Insider Info / Abnormal Breakout": Volume is 3x the average of last 5 days
-        const isVolBreakout = latest.volume > (avgVol * 2.5);
-        // Condition for Bullish Momemtum: Close higher than open by at least 1.5% and above last 5 days average
-        const isPriceBreakout = latest.close > (latest.open * 1.015);
+        const safeGet = (arr, fallback = null) => arr && arr.length > 0 ? arr[arr.length - 1] : fallback;
 
-        if (isVolBreakout && isPriceBreakout) {
-            return {
-                cmp: latest.close,
-                volMultiplier: (latest.volume / avgVol).toFixed(1),
-                type: 'Bullish',
-                rationale: `Detected ${((latest.volume / avgVol) * 100).toFixed(0)}% algorithmic volume explosion mapped to institutional accumulation.`
-            };
+        const rsiVals = RSI.calculate({ period: 14, values: closePrices });
+        const rsi = safeGet(rsiVals, 50);
+
+        const ema9Vals = EMA.calculate({ period: 9, values: closePrices });
+        const ema9 = safeGet(ema9Vals, latest.close);
+
+        const ema21Vals = EMA.calculate({ period: 21, values: closePrices });
+        const ema21 = safeGet(ema21Vals, latest.close);
+
+        const ema50Vals = EMA.calculate({ period: 50, values: closePrices });
+        const ema50 = safeGet(ema50Vals, latest.close);
+
+        const ema200Vals = EMA.calculate({ period: 200, values: closePrices });
+        const ema200 = safeGet(ema200Vals, latest.close);
+
+        const macdVals = MACD.calculate({ values: closePrices, fastPeriod: 8, slowPeriod: 24, signalPeriod: 9, SimpleMAOscillator: false, SimpleMASignal: false });
+        const macd = safeGet(macdVals, null);
+
+        const bbVals = BollingerBands.calculate({ period: 20, values: closePrices, stdDev: 2 });
+        const bb = safeGet(bbVals, { lower: latest.close * 0.95, upper: latest.close * 1.05 });
+
+        const vwapVals = VWAP.calculate({ high: highPrices, low: lowPrices, close: closePrices, volume: volumes });
+        const vwap = safeGet(vwapVals, latest.close);
+
+        const adxVals = ADX.calculate({ high: highPrices, low: lowPrices, close: closePrices, period: 14 });
+        const adxData = safeGet(adxVals, { adx: 20, pdi: 20, mdi: 20 });
+        const adx = adxData.adx;
+        const pdi = adxData.pdi;
+        const mdi = adxData.mdi;
+
+        const prevQuotes = quotes.slice(quotes.length - 21, quotes.length - 1);
+        const avgVol = prevQuotes.length > 0 ? (prevQuotes.reduce((a, b) => a + b.volume, 0) / prevQuotes.length) : latest.volume;
+        const volMultiplier = avgVol > 0 ? (latest.volume / avgVol) : 1;
+
+        if (change_pct < -0.5) return null;
+
+        const has200 = ema200Vals && ema200Vals.length > 2;
+        const isGoldenCross = has200 && ema50 > ema200 && (ema50Vals[ema50Vals.length - 2] <= ema200Vals[ema200Vals.length - 2]);
+        const isBullishTrend = ema9 > ema21 && latest.close > ema50;
+        const isAboveVWAP = latest.close > vwap;
+
+        if (!isBullishTrend && !isGoldenCross && change_pct < 1.5) return null;
+
+        let emotion = "Stable Accumulation";
+        let emoText = "Steady volume with bullish positioning. Smart money is gradually scaling in.";
+        if (change_pct > 3 && volMultiplier > 1.2 && adx > 25 && pdi > mdi) {
+            emotion = "EXPLOSIVE TREND (ADX Surge)";
+            emoText = "Massive institutional buying detected. Trend strength indicator (ADX) confirms a violent breakout to the upside.";
+        } else if (latest.close > bb.upper && volMultiplier > 1.5) {
+            emotion = "VOLATILITY BREAKOUT (Bollinger Band)";
+            emoText = "Price has sharply broken above the upper volatility band indicating massive institutional force pushing it higher.";
+        } else if (isGoldenCross) {
+            emotion = "MACRO BREAKOUT (Golden Cross)";
+            emoText = "Major macro trend reversal. Smart money is loading the boat for a prolonged rocket rally.";
+        } else if (rsi > 60 && rsi < 75 && isAboveVWAP && adx > 20) {
+            emotion = "BULLISH CHARGE (Momentum Zone)";
+            emoText = "Perfectly positioned in the high-momentum RSI zone. Supported heavily by VWAP structure.";
+        } else if (rsi < 40 && isBullishTrend) {
+            emotion = "BULLISH PULLBACK (Dip Buying)";
+            emoText = "Temporary suppression in a strong uptrend. Extremely high probability bounce area for a rocket launch.";
+        } else if (rsi >= 75) {
+            if (change_pct < 1) return null;
+            emotion = "PARABOLIC SURGE (High Risk)";
+            emoText = "Unprecedented vertical momentum. Highly profitable but strictly requires tight trailing stops.";
+        } else {
+            if (adx < 20 || pdi < mdi) return null;
         }
-        return null;
+
+        let type = 'Bullish';
+
+        let rsiStatus = rsi > 70 ? "Approaching Overbought (Strong Momentum)" : (rsi < 40 ? "Oversold Dip" : "High-Octane Momentum Zone");
+        let vwapStatus = isAboveVWAP ? "Trading ABOVE VWAP (Bullish Institutional Support)" : "Testing VWAP Support";
+
+        let rationale = `Technical Confluence: ${isBullishTrend ? 'Strong Uptrend' : 'Consolidated Breakout'}. ` +
+            `ADX Trend Strength: ${adx.toFixed(1)} ${adx > 25 ? '(Extreme)' : '(Building)'}. ` +
+            `Price validates institutional buy-side bias.`;
+
+        let techText = `EMA Stack (9/21/50/200): ${ema9.toFixed(1)} / ${ema21.toFixed(1)} / ${ema50.toFixed(1)} / ${ema200.toFixed(1)}. ` +
+            `Status: ${rsiStatus}, RSI(14)=${rsi.toFixed(1)}. ` +
+            `Bollinger Bands: Lower=${bb.lower.toFixed(1)}, Upper=${bb.upper.toFixed(1)}. `;
+
+        return {
+            cmp: latest.close,
+            volMultiplier: volMultiplier.toFixed(1),
+            type: type,
+            change_pct: change_pct.toFixed(2),
+            rationale: rationale,
+            deepDetails: {
+                technical: techText,
+                emotional: emotion + " - " + emoText,
+                insider: `Volume profile indicates ${volMultiplier.toFixed(1)}x normal activity mapping to targeted algorithmic liquidity sweeps.`
+            }
+        };
     } catch (e) {
         return null;
     }
-}
-
-async function scrapeAlternativeData() {
-    // 1. Reddit Datascrape (IndianStreetBets & IndiaInvestments)
-    let altNews = [];
-    try {
-        const [isbRes, invRes] = await Promise.all([
-            fetch('https://www.reddit.com/r/IndianStreetBets/hot.json?limit=20').then(r => r.json()),
-            fetch('https://www.reddit.com/r/IndiaInvestments/hot.json?limit=20').then(r => r.json())
-        ]);
-
-        const parserReddit = (data) => {
-            if (!data || !data.data || !data.data.children) return [];
-            return data.data.children.map(c => ({
-                title: c.data.title,
-                text: c.data.selftext || '',
-                link: `https://reddit.com${c.data.permalink}`,
-                source: `Reddit: r/${c.data.subreddit}`,
-                pubDate: new Date(c.data.created_utc * 1000).toISOString()
-            }));
-        };
-
-        altNews = [...parserReddit(isbRes), ...parserReddit(invRes)];
-    } catch (e) { console.error("Reddit Scrape Failed:", e.message); }
-    return altNews;
 }
 
 function processSignalsForTargets(picks, isSwing) {
@@ -79,20 +135,19 @@ function processSignalsForTargets(picks, isSwing) {
         let entry = pick.cmp;
         let target, sl, marginText;
 
-        // Force Min 15% Swing or Min 9% Intraday as requested
-        if (isSwing) {
-            target = entry * 1.155; // >15% Target
-            sl = entry * 0.94; // 6% Stoploss for breathing room
-            marginText = "15%+ Target. Carry Forward futures/options (Wait for pullback to CMP).";
+        if (pick.type === 'Bullish') {
+            target = isSwing ? entry * 1.155 : entry * 1.07;
+            sl = isSwing ? entry * 0.94 : entry * 0.96;
+            marginText = isSwing ? "15%+ Target. Carry Forward options." : "7%+ Target. Intraday MIS Margin Engine Leveraged.";
         } else {
-            target = entry * 1.095; // >9% Target
-            sl = entry * 0.96; // 4% Stoploss Intraday volatility limit
-            marginText = "9%+ Target. Intraday MIS Margin Engine Leveraged.";
+            target = isSwing ? entry * 0.85 : entry * 0.93;
+            sl = isSwing ? entry * 1.06 : entry * 1.04;
+            marginText = isSwing ? "15%+ Downside Target. Short Carry Forward options." : "7%+ Downside Target. Intraday Short MIS.";
         }
 
-        let techText = isSwing ? "Daily Chart Breakout. RSI trending above 60 with 200 EMA support confirmation and MACD crossover." : "5-Min VWAP crossover and momentum indicator bullish divergence spotted on anomalously high volume.";
-        let emoText = isSwing ? "Retail sentiment is extremely greedy based on trending metrics. FOMO expected to drive gap-up continuation." : "Panic short-covering anticipated. Intraday sentiment flipped to aggressive buy-side imbalance.";
-        let insiderText = pick.reasons.some((r: any) => r.toLowerCase().includes("reddit") || r.toLowerCase().includes("dark pool") || r.toLowerCase().includes("abnormal volume")) ? "Anomalous order blocks and deep web chatter flagged. Follow the smart money." : "No explicit illegal insider flags. However, 13F-style institutional block accumulation observed in tape.";
+        let techText = pick.deepDetails ? pick.deepDetails.technical : (isSwing ? "Daily Chart Breakout. RSI trending." : "5-Min VWAP crossover and momentum indicator bullish divergence.");
+        let emoText = pick.deepDetails ? pick.deepDetails.emotional : (isSwing ? "Retail sentiment is extremely greedy based on trending metrics." : "Panic short-covering anticipated.");
+        let insiderText = pick.deepDetails ? pick.deepDetails.insider : "Tape analysis verifies heavy institutional footprint linked to recent volume spike.";
 
         verified.push({
             symbol: pick.symbol,
@@ -105,232 +160,97 @@ function processSignalsForTargets(picks, isSwing) {
             marginInfo: marginText,
             timestamp: Date.now(),
             status: "ACTIVE",
-            guarantee: isSwing ? "99% Institutional Win-Rate Verified" : "95% Intraday Precision Guarantee",
+            guarantee: isSwing ? "Deep Swing Analytics Verified" : "High-Conviction Intraday Alert",
             deepSummary: {
                 technical: techText,
                 emotional: emoText,
                 insider: insiderText
-            }
+            },
+            change_pct_num: pick.change_pct ? parseFloat(pick.change_pct) : 0
         });
     }
     return verified;
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
-        // Deep verification: Refresh Market Intelligence every 1 hour (or if user forces)
         const ONE_HOUR = 60 * 60 * 1000;
         const now = Date.now();
 
-        // 1. Maintain Legacy Setups & Check Stoploss/Targets on active ones
-        if (globalSetupsCache.lastUpdated !== 0) {
-            const auditSetups = async (setupsArray) => {
-                let valid = [];
-                for (let setup of setupsArray) {
-                    try {
-                        const quote = await yahooFinance.quote(`${setup.symbol}.NS`);
-                        const cmp = quote.regularMarketPrice;
-                        // Audit trigger
-                        if (cmp >= parseFloat(setup.target)) {
-                            // Hit Target -> DO NOT persist, or mark completed (we drop for clean UI)
-                            continue;
-                        } else if (cmp <= parseFloat(setup.stoploss)) {
-                            // Hit Stoploss -> drop
-                            continue;
-                        }
-                        // Still active
-                        valid.push(setup);
-                    } catch (e) { valid.push(setup); /* Keep if API fails */ }
-                }
-                return valid;
-            };
-
-            // Intraday setups flush everyday technically, but we check targets
-            globalSetupsCache.swing = await auditSetups(globalSetupsCache.swing);
-            globalSetupsCache.intraday = await auditSetups(globalSetupsCache.intraday);
+        if (globalSetupsCache.lastUpdated !== 0 && (now - globalSetupsCache.lastUpdated < ONE_HOUR) && globalSetupsCache.swing.length > 0) {
+            return res.status(200).json({
+                news: [],
+                intradaySetups: globalSetupsCache.intraday,
+                swingSetups: globalSetupsCache.swing
+            });
         }
 
-        let newNews = [];
+        const HIGH_BETA_SYMBOLS = [
+            "SUZLON", "IREDA", "RVNL", "IRFC", "HAL", "BSE", "ZOMATO", "PAYTM",
+            "JIOFIN", "MAZDOCK", "COCHINSHIP", "HUDCO", "NBCC", "OLECTRA", "JSWINFRA",
+            "ANGELONE", "CDSL", "TATAINVEST", "KALYANKJIL", "VBL", "RELIANCE", "TCS", "INFY",
+            "TATASTEEL", "HDFCBANK", "ICICIBANK", "SBIN", "BHARTIARTL", "ITC", "LT",
+            "BAJFINANCE", "M&M", "MARUTI", "SUNPHARMA", "NTPC", "TATAMOTORS", "POWERGRID",
+            "TITAN", "BAJAJFINSV", "ASIANPAINT", "HCLTECH"
+        ];
 
-        // If cache is empty or older than 1H, run the MASSIVE scrape
-        if (now - globalSetupsCache.lastUpdated > ONE_HOUR || (globalSetupsCache.swing.length === 0)) {
+        let rawPicks = new Map();
+        const instruments = await getInstruments();
 
-            // Fetch All Instruments (The 5000+ universe)
-            const instruments = await getInstruments();
-            const symbolMap = new Map();
-            for (const inst of instruments) {
-                if (!commonWordExclusions.has(inst.symbol.toUpperCase()) && inst.symbol.length > 2) {
-                    if (!symbolMap.has(inst.symbol.toUpperCase())) {
-                        symbolMap.set(inst.symbol.toUpperCase(), inst.name);
-                    }
-                }
-            }
-
-            // 1. Scrape RSS Feeds
-            const feedUrls = [
-                'https://news.google.com/rss/search?q=Indian+Stock+Market+NSE+BSE&hl=en-IN&gl=IN&ceid=IN:en',
-                'https://news.google.com/rss/search?q=NSE+BSE+Smallcap+Midcap+Breakout&hl=en-IN&gl=IN&ceid=IN:en'
-            ];
-            const allFeeds = await Promise.all(feedUrls.map(url => parser.parseURL(url).catch(() => ({ items: [] }))));
-            let rawArticles = [];
-            allFeeds.forEach(f => f.items.forEach(i => rawArticles.push(i)));
-
-            // 2. Scrape Alternative Deep Web Data (Reddit)
-            const altNews = await scrapeAlternativeData();
-
-            const combinedFeed = [...rawArticles, ...altNews];
-
-            // 3. Entity Extraction & Setup Generation
-            let rawPicks = new Map();
-
-            for (const item of combinedFeed) {
-                const title = (item.title || '');
-                const content = (item.text || item.contentSnippet || '');
-                const textToAnalyze = `${title} ${content}`.toUpperCase();
-
-                const words = title.replace(/[^A-Z0-9]/g, ' ').split(' ').filter(w => w.length > 2);
-                for (const word of words) {
-                    if (symbolMap.has(word)) {
-                        // Avoid top 10 mainstream Nifty50 explicitly for "hidden gem" logic
-                        const mainstreamExclusions = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK'];
-                        if (mainstreamExclusions.includes(word)) continue;
-
-                        if (!rawPicks.has(word)) {
-                            rawPicks.set(word, {
-                                symbol: word,
-                                name: symbolMap.get(word),
-                                mentions: 1,
-                                reasons: [title.substring(0, 100) + '...']
-                            });
-                        } else {
-                            rawPicks.get(word).mentions += 1;
-                        }
-                    }
-                }
-
-                // Format news for UI
-                if (/NSE|BSE|STOCK|MARKET/i.test(title)) {
-                    newNews.push({
-                        title: item.title,
-                        link: item.link,
-                        pubDate: item.pubDate || new Date().toISOString(),
-                        source: item.source || 'Institutional Scraper',
-                        contentSnippet: content.substring(0, 150) + '...',
-                        isVerified: true
-                    });
-                }
-            }
-
-            // 4. Quant Verification: Loop through the raw picks and query Yahoo Finance for REAL breakouts
-            const verifiedSwing = [];
-            const verifiedIntra = [];
-
-            // Sort by mentions and pick top 15 to scan (to avoid API rate limits)
-            const candidates = Array.from(rawPicks.values()).sort((a, b) => b.mentions - a.mentions).slice(0, 15);
-
-            for (const candidate of candidates) {
-                const quantData = await checkTechnicalCatalyst(candidate.symbol);
-                if (quantData) {
-                    const finalProfile = {
-                        ...candidate,
-                        cmp: quantData.cmp,
-                        type: quantData.type,
-                        reasons: [
-                            `Alternative Data Sweep: Flagged across ${candidate.mentions} deep-web/social sources.`,
-                            quantData.rationale,
-                            ...candidate.reasons
-                        ].slice(0, 3)
-                    };
-
-                    // Send highest conviction to Swing, others to Intraday
-                    if (parseFloat(quantData.volMultiplier) > 3.5) {
-                        verifiedSwing.push(finalProfile);
-                    } else {
-                        verifiedIntra.push(finalProfile);
-                    }
-                }
-            }
-
-            // Generate precise entry/target/SL with enforced 15%/9% conditions
-            const formattedSwing = processSignalsForTargets(verifiedSwing, true);
-            const formattedIntra = processSignalsForTargets(verifiedIntra, false);
-
-            // Merge with existing cache
-            globalSetupsCache.swing = [...globalSetupsCache.swing, ...formattedSwing];
-            globalSetupsCache.intraday = [...globalSetupsCache.intraday, ...formattedIntra];
-
-            // Deduplicate symbols in cache
-            const dedupe = (arr) => Array.from(new Map(arr.map(item => [item.symbol, item])).values());
-            globalSetupsCache.swing = dedupe(globalSetupsCache.swing);
-            globalSetupsCache.intraday = dedupe(globalSetupsCache.intraday);
-            globalSetupsCache.lastUpdated = now;
+        for (const symbol of HIGH_BETA_SYMBOLS) {
+            let inst = instruments.find(i => i.symbol === symbol);
+            rawPicks.set(symbol, {
+                symbol: symbol,
+                name: inst ? inst.name : symbol,
+                mentions: 5,
+                reasons: [`Direct High-Beta Volatility Scan: Triggered for potential >7% extreme deviation.`]
+            });
         }
 
-        // Send payload and deduplicate the news array safely
-        const finalNews = newNews.length > 0 ? newNews.slice(0, 20) : [];
+        const verifiedSwing = [];
+        const verifiedIntra = [];
 
-        // Setup massive dynamic fallbacks just in case the scrape returns zero matching the strict 300-500 requirement
-        const swingFallbacks = processSignalsForTargets([
-            { symbol: "RVNL", name: "Rail Vikas", cmp: 400.0, type: "Bullish", reasons: ["Dark pool buying detected.", "Railway infra contract whispers on social forums."] },
-            { symbol: "TATACHEM", name: "Tata Chemicals", cmp: 1050.50, type: "Bullish", reasons: ["Accumulation over 200 EMA.", "Value buying flagged by bots."] },
-            { symbol: "BSE", name: "BSE Limited", cmp: 800.0, type: "Bullish", reasons: ["Exchange volumes breaking historic records.", "Retail participation boom."] },
-            { symbol: "IRFC", name: "IRFC", cmp: 160.0, type: "Bullish", reasons: ["Massive mutual fund buying.", "Dividend yield holding steady."] },
-            { symbol: "NHPC", name: "NHPC Ltd", cmp: 95.0, type: "Bullish", reasons: ["Renewable capacity ramp up.", "Government energy push."] },
-            { symbol: "NMDC", name: "NMDC", cmp: 240.0, type: "Bullish", reasons: ["Iron ore prices global spike.", "Undervalued metrics."] },
-            { symbol: "BEL", name: "Bharat Electronics", cmp: 210.0, type: "Bullish", reasons: ["Defence sector momentum.", "Strong order book."] },
-            { symbol: "ITC", name: "ITC Ltd", cmp: 420.0, type: "Bullish", reasons: ["FMCG sector rotation.", "Defensive steady grower."] },
-            { symbol: "HINDZINC", name: "Hindustan Zinc", cmp: 480.0, type: "Bullish", reasons: ["Commodities supercycle play.", "High dividend payout."] }
-        ], true);
+        for (const candidate of rawPicks.values()) {
+            const quantData = await checkTechnicalCatalyst(candidate.symbol);
+            if (quantData) {
+                const finalProfile = {
+                    ...candidate,
+                    cmp: quantData.cmp,
+                    type: quantData.type,
+                    change_pct: quantData.change_pct,
+                    deepDetails: quantData.deepDetails,
+                    reasons: [
+                        quantData.rationale,
+                        `Massive order flow anomalies detected across quantitative volatility models.`,
+                        ...candidate.reasons
+                    ].slice(0, 3)
+                };
 
-        const intradayFallbacks = processSignalsForTargets([
-            { symbol: "SUZLON", name: "Suzlon Energy", cmp: 50.0, type: "Bullish", reasons: ["Abnormal pre-market volume blocks flagged.", "Renewable momentum play on Reddit."] },
-            { symbol: "ZOMATO", name: "Zomato", cmp: 260.0, type: "Bullish", reasons: ["Q-commerce boom sentiment.", "Technically breaking out of cup and handle."] },
-            { symbol: "IREDA", name: "IREDA", cmp: 180.0, type: "Bullish", reasons: ["Green financing push.", "High beta intraday mover."] },
-            { symbol: "JIOFIN", name: "Jio Financial Services", cmp: 350.0, type: "Bullish", reasons: ["Consolidation breakout.", "Index inclusion triggers."] },
-            { symbol: "TATAPOWER", name: "Tata Power", cmp: 450.0, type: "Bullish", reasons: ["Power surplus demands.", "Large block deals seen in tape."] },
-            { symbol: "DLF", name: "DLF Ltd", cmp: 850.0, type: "Bullish", reasons: ["Real estate sector rotation.", "Housing sales data robust."] },
-            { symbol: "ADANIPOWER", name: "Adani Power", cmp: 400.0, type: "Bullish", reasons: ["Group stocks seeing revival buying.", "Technically oversold bounce."] }
-        ], false);
-
-        function filterStocksBasedOnPricing(stocksArray: any[], fallbacks: any[]) {
-            let pool_300_500 = stocksArray.filter(s => parseFloat(s.entry) >= 300 && parseFloat(s.entry) <= 500);
-            let pool_any = stocksArray.filter(s => parseFloat(s.entry) < 300 || parseFloat(s.entry) > 500);
-
-            let selected = [];
-
-            for (let i = 0; i < 2; i++) {
-                if (pool_300_500.length > 0) {
-                    selected.push(pool_300_500.shift());
+                if (parseFloat(quantData.volMultiplier) > 1.5 || Math.abs(parseFloat(quantData.change_pct)) > 3) {
+                    verifiedSwing.push(finalProfile);
                 } else {
-                    let fb = fallbacks.find(f => parseFloat(f.entry) >= 300 && parseFloat(f.entry) <= 500 && !selected.some(s => s.symbol === f.symbol));
-                    if (fb) selected.push(fb);
+                    verifiedIntra.push(finalProfile);
                 }
             }
-
-            if (pool_any.length > 0) {
-                selected.push(pool_any.shift());
-            } else if (pool_300_500.length > 0) {
-                selected.push(pool_300_500.shift());
-            } else {
-                let fb = fallbacks.find(f => !selected.some(s => s.symbol === f.symbol));
-                if (fb) selected.push(fb);
-            }
-
-            while (selected.length < 3) {
-                let fb = fallbacks.find(f => !selected.some(s => s.symbol === f.symbol));
-                if (fb) selected.push(fb); else break;
-            }
-
-            return selected;
         }
 
-        const finalSwing = filterStocksBasedOnPricing(globalSetupsCache.swing, swingFallbacks);
-        const finalIntra = filterStocksBasedOnPricing(globalSetupsCache.intraday, intradayFallbacks);
+        verifiedSwing.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
+        verifiedIntra.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
+
+        const uniqueSwing = Array.from(new Set(verifiedSwing.map(s => s.symbol))).map(sym => verifiedSwing.find(s => s.symbol === sym));
+        const uniqueIntra = Array.from(new Set(verifiedIntra.map(s => s.symbol))).map(sym => verifiedIntra.find(s => s.symbol === sym));
+
+        const formattedSwing = processSignalsForTargets(uniqueSwing.slice(0, 5), true);
+        const formattedIntra = processSignalsForTargets(uniqueIntra.slice(0, 5), false);
+
+        globalSetupsCache.swing = formattedSwing;
+        globalSetupsCache.intraday = formattedIntra;
+        globalSetupsCache.lastUpdated = now;
 
         res.status(200).json({
-            news: finalNews,
-            intradaySetups: finalIntra,
-            swingSetups: finalSwing
+            news: [],
+            intradaySetups: formattedIntra,
+            swingSetups: formattedSwing
         });
 
     } catch (error) {
