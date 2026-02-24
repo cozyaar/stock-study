@@ -12,7 +12,7 @@ let globalSetupsCache = {
 
 async function checkTechnicalCatalyst(symbol) {
     try {
-        const queryOptions = { period1: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000).toISOString(), interval: '1d' };
+        const queryOptions: any = { period1: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000).toISOString(), interval: '1d' };
         const hist = await yahooFinance.chart(`${symbol}.NS`, queryOptions);
         if (!hist.quotes) return null;
 
