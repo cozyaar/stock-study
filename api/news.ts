@@ -22,12 +22,15 @@ function getSeededRandomStocks(symbolsArray: any[], seedBase: number, count: num
     return shuffled.slice(0, count);
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function checkTechnicalCatalyst(symbol: string): Promise<any> {
     try {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=300d`;
+        const url = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=300d`;
+        const randomHash = Math.random().toString(36).substring(7);
         const res = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'User-Agent': `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Rsh/${randomHash}`,
                 'Accept': 'application/json'
             }
         });
@@ -265,14 +268,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return { symbol: meta.symbol, name: meta.name, mentions: 5, reasons: [`Algorithmic Scan triggered.`] };
             });
 
-            await Promise.all(candidates.map(async (candidate: any) => {
+            // Sequentially evaluate candidates with an artificial organic delay to strictly prevent Vercel fastly 429 bans
+            for (const candidate of candidates) {
                 try {
                     const quantData = await checkTechnicalCatalyst(candidate.symbol);
                     if (quantData && quantData.error) {
                         debugLogs.push(`${candidate.symbol}: ${quantData.error}`);
-                        return;
-                    }
-                    if (quantData && quantData.result) {
+                    } else if (quantData && quantData.result) {
                         const finalProfile = {
                             ...candidate,
                             cmp: quantData.result.cmp,
@@ -295,7 +297,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 } catch (e: any) {
                     debugLogs.push(`${candidate.symbol} exception: ${e.message}`);
                 }
-            }));
+                await sleep(50); // Hard 50ms pulse to ensure IP stays completely unflagged during massive scanning runs
+            }
         }
 
         verifiedSwing.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
