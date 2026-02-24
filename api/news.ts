@@ -161,12 +161,12 @@ async function checkTechnicalCatalyst(symbol: string) {
                 insider: `Volume profile indicates ${volMultiplier.toFixed(1)}x normal activity mapping to targeted algorithmic liquidity sweeps.`
             }
         };
-    } catch (e) {
-        return null;
+    } catch (e: any) {
+        return { error: e.message || String(e) };
     }
 }
 
-function processSignalsForTargets(picks, isSwing) {
+function processSignalsForTargets(picks: any[], isSwing: boolean) {
     const verified = [];
     for (const pick of picks) {
         let entry = pick.cmp;
@@ -240,12 +240,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const checkedSymbols = new Set<string>();
 
         let attempts = 0;
-        const maxAttempts = 10; // Prevent indefinite looping. 10 loops of 15 stocks = 150 obscure stocks analyzed optimally.
+        const maxAttempts = 10;
+        let debugLogs: string[] = [];
 
         while ((verifiedSwing.length < 3 || verifiedIntra.length < 3) && attempts < maxAttempts) {
             attempts++;
 
-            // Grab 15 completely random un-scanned symbols from the database
             const batch = [...symbolsDB]
                 .filter(s => !checkedSymbols.has(s.symbol))
                 .sort(() => 0.5 - Math.random())
@@ -255,18 +255,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             const candidates = batch.map(meta => {
                 checkedSymbols.add(meta.symbol);
-                return {
-                    symbol: meta.symbol,
-                    name: meta.name,
-                    mentions: 5,
-                    reasons: [`Algorithmic Scan triggered across 2000+ unified NSE instruments.`]
-                };
+                return { symbol: meta.symbol, name: meta.name, mentions: 5, reasons: [`Algorithmic Scan triggered.`] };
             });
 
-            // Concurrently evaluate all 15 symbols to maximize execution speed
             await Promise.all(candidates.map(async (candidate: any) => {
                 try {
                     const quantData = await checkTechnicalCatalyst(candidate.symbol);
+                    if (quantData && quantData.error) {
+                        debugLogs.push(`${candidate.symbol}: ${quantData.error}`);
+                        return;
+                    }
                     if (quantData) {
                         const finalProfile = {
                             ...candidate,
@@ -274,11 +272,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             type: quantData.type,
                             change_pct: quantData.change_pct,
                             deepDetails: quantData.deepDetails,
-                            reasons: [
-                                quantData.rationale,
-                                `Massive order flow anomalies detected across quantitative volatility models.`,
-                                ...candidate.reasons
-                            ].slice(0, 3)
+                            reasons: [quantData.rationale, `Anomalous flow.`, ...candidate.reasons]
                         };
 
                         if (parseFloat(quantData.volMultiplier) > 1.5 || Math.abs(parseFloat(quantData.change_pct)) > 3) {
@@ -286,9 +280,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         } else {
                             verifiedIntra.push(finalProfile);
                         }
+                    } else {
+                        debugLogs.push(`${candidate.symbol}: Null Output`);
                     }
-                } catch (e) {
-                    // Fail silently for delisted or rate-limited single symbols
+                } catch (e: any) {
+                    debugLogs.push(`${candidate.symbol} exception: ${e.message}`);
                 }
             }));
         }
@@ -302,18 +298,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const formattedSwing = processSignalsForTargets(uniqueSwing.slice(0, 5) as any, true);
         const formattedIntra = processSignalsForTargets(uniqueIntra.slice(0, 5) as any, false);
 
-        globalSetupsCache.swing = formattedSwing;
-        globalSetupsCache.intraday = formattedIntra;
-        globalSetupsCache.lastUpdated = now;
+        globalSetupsCache = {
+            intraday: formattedIntra,
+            swing: formattedSwing,
+            news: [],
+            lastUpdated: now
+        };
 
-        res.status(200).json({
+        return res.status(200).json({
             news: [],
             intradaySetups: formattedIntra,
-            swingSetups: formattedSwing
+            swingSetups: formattedSwing,
+            debug: req.query.debug ? debugLogs : undefined
         });
-
-    } catch (error) {
-        console.error("Deep Analysis Engine Error:", error);
-        res.status(500).json({ error: "Failed to perform deep quant analysis." });
+    } catch (e: any) {
+        console.error("Deep Analysis Engine Error:", e);
+        return res.status(500).json({ error: e.message });
     }
 }
