@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import yahooFinance from "yahoo-finance2";
-import { getInstruments } from './utils.js';
+import symbolsDB from "./symbols.json";
 import ti from "technicalindicators";
 const { EMA, RSI, MACD, BollingerBands, VWAP, ADX } = ti;
 
@@ -192,28 +192,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        const ALL_SYMBOLS = [
-            "SUZLON", "IREDA", "RVNL", "IRFC", "HAL", "BSE", "ZOMATO", "PAYTM",
-            "JIOFIN", "MAZDOCK", "COCHINSHIP", "HUDCO", "NBCC", "OLECTRA", "JSWINFRA",
-            "ANGELONE", "CDSL", "TATAINVEST", "KALYANKJIL", "VBL", "RELIANCE", "TCS", "INFY",
-            "TATASTEEL", "HDFCBANK", "ICICIBANK", "SBIN", "BHARTIARTL", "ITC", "LT",
-            "BAJFINANCE", "M&M", "MARUTI", "SUNPHARMA", "NTPC", "TATAMOTORS", "POWERGRID",
-            "TITAN", "BAJAJFINSV", "ASIANPAINT", "HCLTECH"
-        ];
-
-        // Vercel Serverless Function has a 10-second limit. We shuffle and slice 12 random symbols per execution for concurrent evaluation.
-        const HIGH_BETA_SYMBOLS = ALL_SYMBOLS.sort(() => 0.5 - Math.random()).slice(0, 12);
-
+        // Pick exactly 12 truly random symbols from the official NSE 2000+ symbol database to bypass 10s edge timeout limits
+        const HIGH_BETA_SYMBOLS = [...symbolsDB].sort(() => 0.5 - Math.random()).slice(0, 12);
         let rawPicks = new Map();
-        const instruments = await getInstruments();
 
-        for (const symbol of HIGH_BETA_SYMBOLS) {
-            let inst = instruments.find((i: any) => i.symbol === symbol);
-            rawPicks.set(symbol, {
-                symbol: symbol,
-                name: inst ? inst.name : symbol,
+        for (const meta of HIGH_BETA_SYMBOLS) {
+            rawPicks.set(meta.symbol, {
+                symbol: meta.symbol,
+                name: meta.name,
                 mentions: 5,
-                reasons: [`Direct High-Beta Volatility Scan: Triggered for potential >7% extreme deviation.`]
+                reasons: [`Algorithmic Scan triggered across 2000+ unified NSE instruments.`]
             });
         }
 
