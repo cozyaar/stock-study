@@ -4,9 +4,10 @@ import { getInstruments } from './utils.js';
 import ti from "technicalindicators";
 const { EMA, RSI, MACD, BollingerBands, VWAP, ADX } = ti;
 
-let globalSetupsCache = {
+let globalSetupsCache: any = {
     intraday: [],
     swing: [],
+    news: [],
     lastUpdated: 0
 };
 

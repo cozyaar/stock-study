@@ -8,11 +8,22 @@ interface HeaderProps {
   onPageChange: (page: Page) => void;
 }
 
-const navItems: { label: string; page: Page }[] = [
+const navItems = [
   { label: 'Home', page: 'home' },
   { label: 'Learner', page: 'learner' },
-  { label: 'Demo', page: 'demo' },
-  { label: 'News & Setups', page: 'news' },
+  {
+    label: 'Demo', page: 'demo', isDropdown: true, subItems: [
+      { label: 'Indian Market', page: 'demo' },
+      { label: 'Commodities', page: 'demo-commodities' }
+    ]
+  },
+  {
+    label: 'News', page: 'news', isDropdown: true, subItems: [
+      { label: 'Recommendations', page: 'news' },
+      { label: 'Economic Calendar', page: 'calendar' },
+      { label: 'Global & Stock News', page: 'stock-news' }
+    ]
+  },
   { label: 'About', page: 'about' },
   { label: 'Contact', page: 'contact' },
 ];
@@ -38,11 +49,12 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
-              if (item.label === 'Demo') {
+              if (item.isDropdown) {
+                const isActive = item.subItems?.some(sub => currentPage === sub.page);
                 return (
-                  <div key={item.page} className="relative group">
+                  <div key={item.label} className="relative group">
                     <button
-                      className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${(currentPage === 'demo' || currentPage === 'demo-commodities')
+                      className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
                         ? 'text-[#22c55e] bg-[#22c55e]/10'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
                         }`}
@@ -51,20 +63,17 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                       <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
                     </button>
                     {/* Dropdown Menu */}
-                    <div className="absolute left-0 mt-1 w-48 bg-[#0a0e1a] border border-[#2d3748] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden z-50">
+                    <div className="absolute left-0 mt-1 w-56 bg-[#0a0e1a] border border-[#2d3748] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden z-50">
                       <div className="py-2">
-                        <button
-                          onClick={() => onPageChange('demo')}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${currentPage === 'demo' ? 'text-[#22c55e] bg-[#22c55e]/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
-                        >
-                          Indian Market
-                        </button>
-                        <button
-                          onClick={() => onPageChange('demo-commodities')}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${currentPage === 'demo-commodities' ? 'text-[#22c55e] bg-[#22c55e]/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
-                        >
-                          Commodities
-                        </button>
+                        {item.subItems?.map(sub => (
+                          <button
+                            key={sub.page}
+                            onClick={() => onPageChange(sub.page as Page)}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${currentPage === sub.page ? 'text-[#22c55e] bg-[#22c55e]/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                          >
+                            {sub.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -73,7 +82,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
               return (
                 <button
                   key={item.page}
-                  onClick={() => onPageChange(item.page)}
+                  onClick={() => onPageChange(item.page as Page)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === item.page
                     ? 'text-[#22c55e] bg-[#22c55e]/10'
                     : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
@@ -113,34 +122,25 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
         <div className="md:hidden bg-[#111827] border-b border-[#2d3748]">
           <nav className="px-4 py-4 space-y-2">
             {navItems.map((item) => {
-              if (item.label === 'Demo') {
+              if (item.isDropdown) {
                 return (
-                  <div key={item.page} className="space-y-1">
-                    <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Demo Trading</div>
-                    <button
-                      onClick={() => {
-                        onPageChange('demo');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`block w-full text-left pl-8 pr-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'demo'
-                        ? 'text-[#22c55e] bg-[#22c55e]/10'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
-                        }`}
-                    >
-                      Indian Market
-                    </button>
-                    <button
-                      onClick={() => {
-                        onPageChange('demo-commodities');
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`block w-full text-left pl-8 pr-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'demo-commodities'
-                        ? 'text-[#22c55e] bg-[#22c55e]/10'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
-                        }`}
-                    >
-                      Commodities
-                    </button>
+                  <div key={item.label} className="space-y-1">
+                    <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">{item.label}</div>
+                    {item.subItems?.map(sub => (
+                      <button
+                        key={sub.page}
+                        onClick={() => {
+                          onPageChange(sub.page as Page);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`block w-full text-left pl-8 pr-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === sub.page
+                          ? 'text-[#22c55e] bg-[#22c55e]/10'
+                          : 'text-[#94a3b8] hover:text-white hover:bg-white/5'
+                          }`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
                   </div>
                 );
               }
@@ -149,7 +149,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                 <button
                   key={item.page}
                   onClick={() => {
-                    onPageChange(item.page);
+                    onPageChange(item.page as Page);
                     setMobileMenuOpen(false);
                   }}
                   className={`block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === item.page

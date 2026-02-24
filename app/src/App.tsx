@@ -8,7 +8,10 @@ import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { NewsPage } from './pages/NewsPage';
 
-export type Page = 'home' | 'learner' | 'demo' | 'demo-commodities' | 'about' | 'contact' | 'news';
+import { EconomicCalendarPage } from './pages/EconomicCalendarPage';
+import { GeneralNewsPage } from './pages/GeneralNewsPage';
+
+export type Page = 'home' | 'learner' | 'demo' | 'demo-commodities' | 'about' | 'contact' | 'news' | 'calendar' | 'stock-news';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -24,6 +27,8 @@ function App() {
         {currentPage === 'about' && <AboutPage />}
         {currentPage === 'contact' && <ContactPage />}
         {currentPage === 'news' && <NewsPage onPageChange={setCurrentPage} />}
+        {currentPage === 'calendar' && <EconomicCalendarPage />}
+        {currentPage === 'stock-news' && <GeneralNewsPage />}
       </main>
     </div>
   );
