@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 export const maxDuration = 60; // Allow 60 seconds on Vercel to scan deeply
 
-import yahooFinance from "yahoo-finance2";
 import symbolsDB from "./symbols.json";
 import { EMA, RSI, MACD, BollingerBands, VWAP, ADX } from "technicalindicators";
 
@@ -25,11 +24,36 @@ function getSeededRandomStocks(symbolsArray: any[], seedBase: number, count: num
 
 async function checkTechnicalCatalyst(symbol: string) {
     try {
-        const queryOptions: any = { period1: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000).toISOString(), interval: '1d' };
-        const hist = await yahooFinance.chart(`${symbol}.NS`, queryOptions);
-        if (!hist.quotes) return null;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=300d`;
+        const res = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        });
 
-        const quotes = hist.quotes.filter(q => q.volume !== null && q.close !== null);
+        if (!res.ok) return null;
+        const json = await res.json();
+
+        const result = json?.chart?.result?.[0];
+        if (!result || !result.timestamp || !result.indicators?.quote?.[0]) return null;
+
+        const ts = result.timestamp;
+        const ohlc = result.indicators.quote[0];
+
+        const quotes = [];
+        for (let i = 0; i < ts.length; i++) {
+            if (ohlc.close[i] !== null && ohlc.volume[i] !== null && ohlc.close[i] !== undefined) {
+                quotes.push({
+                    close: ohlc.close[i],
+                    high: ohlc.high[i],
+                    low: ohlc.low[i],
+                    open: ohlc.open[i],
+                    volume: ohlc.volume[i]
+                });
+            }
+        }
+
         if (quotes.length < 30) return null;
 
         const closePrices = quotes.map(q => q.close);
