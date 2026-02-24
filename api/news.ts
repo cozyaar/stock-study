@@ -1,4 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
+export const maxDuration = 60; // Allow 60 seconds on Vercel to scan deeply
+
 import yahooFinance from "yahoo-finance2";
 import symbolsDB from "./symbols.json";
 import { EMA, RSI, MACD, BollingerBands, VWAP, ADX } from "technicalindicators";
@@ -203,97 +205,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        // To simulate analyzing the "Entire 5000+ Universe" seamlessly without timing out on Vercel:
-        // We create a synchronized Seed matching the exact Hour across all global clients.
-        // This makes Vercel and Localhost pick the exact same chunk to analyze, preventing desyncs.
-        const currentHourSeed = Math.floor(now / 3600000);
+        // To simulate analyzing the "Entire 5000+ Universe":
+        // We will patiently scan random batches of stocks from the entire database
+        // and only return once we have successfully found enough real high-conviction setups!
+        // This guarantees we display REAL prices directly from the market, not fallbacks.
 
-        // We evaluate 25 completely obscure unified NSE instruments every hour.
-        const ACTIVE_BATCH = getSeededRandomStocks(symbolsDB as any, currentHourSeed, 25);
         let rawPicks = new Map();
-
-        for (const meta of ACTIVE_BATCH) {
-            rawPicks.set(meta.symbol, {
-                symbol: meta.symbol,
-                name: meta.name,
-                mentions: 5,
-                reasons: [`Algorithmic Scan triggered across 2000+ unified NSE instruments.`]
-            });
-        }
-
         const verifiedSwing: any[] = [];
         const verifiedIntra: any[] = [];
+        const checkedSymbols = new Set<string>();
 
-        const candidates = Array.from(rawPicks.values());
+        let attempts = 0;
+        const maxAttempts = 10; // Prevent indefinite looping. 10 loops of 15 stocks = 150 obscure stocks analyzed optimally.
 
-        // Execute all 12 Yahoo Finance calls concurrently to maximize Vercel Edge compute efficiency
-        await Promise.all(candidates.map(async (candidate: any) => {
-            const quantData = await checkTechnicalCatalyst(candidate.symbol);
-            if (quantData) {
-                const finalProfile = {
-                    ...candidate,
-                    cmp: quantData.cmp,
-                    type: quantData.type,
-                    change_pct: quantData.change_pct,
-                    deepDetails: quantData.deepDetails,
-                    reasons: [
-                        quantData.rationale,
-                        `Massive order flow anomalies detected across quantitative volatility models.`,
-                        ...candidate.reasons
-                    ].slice(0, 3)
+        while ((verifiedSwing.length < 3 || verifiedIntra.length < 3) && attempts < maxAttempts) {
+            attempts++;
+
+            // Grab 15 completely random un-scanned symbols from the database
+            const batch = [...symbolsDB]
+                .filter(s => !checkedSymbols.has(s.symbol))
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 15);
+
+            if (batch.length === 0) break;
+
+            const candidates = batch.map(meta => {
+                checkedSymbols.add(meta.symbol);
+                return {
+                    symbol: meta.symbol,
+                    name: meta.name,
+                    mentions: 5,
+                    reasons: [`Algorithmic Scan triggered across 2000+ unified NSE instruments.`]
                 };
+            });
 
-                if (parseFloat(quantData.volMultiplier) > 1.5 || Math.abs(parseFloat(quantData.change_pct)) > 3) {
-                    verifiedSwing.push(finalProfile);
-                } else {
-                    verifiedIntra.push(finalProfile);
+            // Concurrently evaluate all 15 symbols to maximize execution speed
+            await Promise.all(candidates.map(async (candidate: any) => {
+                try {
+                    const quantData = await checkTechnicalCatalyst(candidate.symbol);
+                    if (quantData) {
+                        const finalProfile = {
+                            ...candidate,
+                            cmp: quantData.cmp,
+                            type: quantData.type,
+                            change_pct: quantData.change_pct,
+                            deepDetails: quantData.deepDetails,
+                            reasons: [
+                                quantData.rationale,
+                                `Massive order flow anomalies detected across quantitative volatility models.`,
+                                ...candidate.reasons
+                            ].slice(0, 3)
+                        };
+
+                        if (parseFloat(quantData.volMultiplier) > 1.5 || Math.abs(parseFloat(quantData.change_pct)) > 3) {
+                            verifiedSwing.push(finalProfile);
+                        } else {
+                            verifiedIntra.push(finalProfile);
+                        }
+                    }
+                } catch (e) {
+                    // Fail silently for delisted or rate-limited single symbols
                 }
-            }
-        }));
+            }));
+        }
 
         verifiedSwing.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
         verifiedIntra.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
 
         const uniqueSwing = Array.from(new Set(verifiedSwing.map(s => s.symbol))).map(sym => verifiedSwing.find(s => s.symbol === sym));
         const uniqueIntra = Array.from(new Set(verifiedIntra.map(s => s.symbol))).map(sym => verifiedIntra.find(s => s.symbol === sym));
-
-        if (uniqueSwing.length === 0) {
-            uniqueSwing.push(
-                {
-                    symbol: "RELIANCE", name: "RELIANCE IND LTD", type: "Bullish", cmp: 1428.80, change_pct: "2.1", reasons: ["Technical Confluence: Strong Uptrend.", "Direct High-Beta Volatility Scan: Triggered for potential >7% extreme deviation.", "Massive volume accumulation in the last 45 minutes of trade structure."], deepDetails: {
-                        technical: "EMA Stack (9/21/50/200): Bullish Alignment across all timeframes. RSI(14)=68.2 indicating sustained momentum without overextension. Bollinger Band expansion confirms incoming volatility markup. Trading firmly ABOVE VWAP (Bullish Institutional Support).",
-                        emotional: "Retail sentiment shows cautious optimism, but derivative data reveals deep out-of-the-money call buying. Smart money is aggressively front-running retail participation with steady block buys.",
-                        insider: "Volumetric footprint mapping indicates 1.8x normal activity aligned purely with algorithmic liquidity sweeps. Dark pool prints validate heavy institutional scaling at key support zones."
-                    }
-                },
-                {
-                    symbol: "IREDA", name: "IND RENEWABLE ENERGY L", type: "Bullish", cmp: 215.15, change_pct: "5.2", reasons: ["Sectoral Momentum Shift.", "Direct High-Beta Volatility Scan.", "Price validates institutional buy-side bias."], deepDetails: {
-                        technical: "MACD Histogram showing aggressive bullish divergence. Anchored VWAP from recent swing low acting as dynamic support. ADX Trend Strength: 34.5 (Extreme).",
-                        emotional: "Euphoric sector sentiment driven by government policy tailwinds. Retail FOMO is accelerating, providing a massive liquidity cushion for institutional margins.",
-                        insider: "Tape analysis detects repeated spoofing on the ask side, masking true accumulation. Genuine block trades of 500k+ shares executing gracefully at the bid."
-                    }
-                }
-            );
-        }
-
-        if (uniqueIntra.length === 0) {
-            uniqueIntra.push(
-                {
-                    symbol: "TCS", name: "TATA CONSULTANCY SVCS", type: "Bullish", cmp: 4120.30, change_pct: "2.5", reasons: ["Intraday Short-Covering Squeeze.", "Massive order flow anomalies detected.", "High-frequency momentum shift."], deepDetails: {
-                        technical: "Intraday 5-Min chart illustrates a textbook double bottom reversal pattern with volume confirmation. RSI breaking previous swing highs. Stochastic Oscillator crossing up from oversold conditions.",
-                        emotional: "Lingering fear has trapped late-stage short sellers. Early signs of panic buying as stop-losses rest directly above the immediate supply zone.",
-                        insider: "Unusual options activity in nearest expiry strikes. Put/Call ratio dropping precipitously, signaling dealers aggressively hedging delta upside."
-                    }
-                },
-                {
-                    symbol: "SUZLON", name: "SUZLON ENERGY LTD", type: "Bullish", cmp: 78.40, change_pct: "3.8", reasons: ["Momentum Continuation.", "Direct High-Beta Volatility Scan.", "Technical Confluence: Strong Uptrend."], deepDetails: {
-                        technical: "Price action maintaining higher highs and higher lows linearly. Volume profile shows virtually zero selling pressure locally. ATR expansion implies an explosive intraday move is imminent.",
-                        emotional: "Retail sentiment is heavily committed to the long side. Social sentiment metrics indicate peak engagement, acting as a self-fulfilling catalyst.",
-                        insider: "Clearing data reveals consistent buying by DIIs. Block deals occurring strictly off-market, indicating a desire to accumulate without disturbing the active limit order book."
-                    }
-                }
-            );
-        }
 
         const formattedSwing = processSignalsForTargets(uniqueSwing.slice(0, 5) as any, true);
         const formattedIntra = processSignalsForTargets(uniqueIntra.slice(0, 5) as any, false);
