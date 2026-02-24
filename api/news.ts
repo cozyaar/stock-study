@@ -22,7 +22,7 @@ function getSeededRandomStocks(symbolsArray: any[], seedBase: number, count: num
     return shuffled.slice(0, count);
 }
 
-async function checkTechnicalCatalyst(symbol: string) {
+async function checkTechnicalCatalyst(symbol: string): Promise<any> {
     try {
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=300d`;
         const res = await fetch(url, {
@@ -32,11 +32,16 @@ async function checkTechnicalCatalyst(symbol: string) {
             }
         });
 
-        if (!res.ok) return null;
-        const json = await res.json();
+        if (!res.ok) return { error: `HTTP ${res.status} ${res.statusText}` };
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); } catch (e) { return { error: `JSON Parse failed. Output: ${text.slice(0, 100)}` }; }
 
         const result = json?.chart?.result?.[0];
-        if (!result || !result.timestamp || !result.indicators?.quote?.[0]) return null;
+        if (!result || !result.timestamp || !result.indicators?.quote?.[0]) {
+            if (json?.chart?.error) return { error: `Yahoo Error: ${json.chart.error.code}` };
+            return { error: 'Missing Quote Indicators from JSON Structure' };
+        }
 
         const ts = result.timestamp;
         const ohlc = result.indicators.quote[0];
@@ -54,7 +59,7 @@ async function checkTechnicalCatalyst(symbol: string) {
             }
         }
 
-        if (quotes.length < 30) return null;
+        if (quotes.length < 30) return { error: `Insufficient History: ${quotes.length} days` };
 
         const closePrices = quotes.map(q => q.close);
         const highPrices = quotes.map(q => q.high);
@@ -102,14 +107,14 @@ async function checkTechnicalCatalyst(symbol: string) {
         const avgVol = prevQuotes.length > 0 ? (prevQuotes.reduce((a, b) => a + b.volume, 0) / prevQuotes.length) : latest.volume;
         const volMultiplier = avgVol > 0 ? (latest.volume / avgVol) : 1;
 
-        if (change_pct < -0.5) return null;
+        if (change_pct < -0.5) return { result: null, skipReason: `Bearish Trend (change=${change_pct.toFixed(2)}%)` };
 
         const has200 = ema200Vals && ema200Vals.length > 2;
         const isGoldenCross = has200 && ema50 > ema200 && (ema50Vals[ema50Vals.length - 2] <= ema200Vals[ema200Vals.length - 2]);
         const isBullishTrend = ema9 > ema21 && latest.close > ema50;
         const isAboveVWAP = latest.close > vwap;
 
-        if (!isBullishTrend && !isGoldenCross && change_pct < 1.5) return null;
+        if (!isBullishTrend && !isGoldenCross && change_pct < 1.5) return { result: null, skipReason: 'Not Bullish/GoldenCross' };
 
         let emotion = "Stable Accumulation";
         let emoText = "Steady volume with bullish positioning. Smart money is gradually scaling in.";
@@ -129,11 +134,11 @@ async function checkTechnicalCatalyst(symbol: string) {
             emotion = "BULLISH PULLBACK (Dip Buying)";
             emoText = "Temporary suppression in a strong uptrend. Extremely high probability bounce area for a rocket launch.";
         } else if (rsi >= 75) {
-            if (change_pct < 1) return null;
+            if (change_pct < 1) return { result: null, skipReason: 'Overbought but no momentum' };
             emotion = "PARABOLIC SURGE (High Risk)";
             emoText = "Unprecedented vertical momentum. Highly profitable but strictly requires tight trailing stops.";
         } else {
-            if (adx < 20 || pdi < mdi) return null;
+            if (adx < 20 || pdi < mdi) return { result: null, skipReason: `Low ADX=${adx.toFixed(1)} or PDI=${pdi.toFixed(1)} < MDI=${mdi.toFixed(1)}` };
         }
 
         let type = 'Bullish';
@@ -150,15 +155,17 @@ async function checkTechnicalCatalyst(symbol: string) {
             `Bollinger Bands: Lower=${bb.lower.toFixed(1)}, Upper=${bb.upper.toFixed(1)}. `;
 
         return {
-            cmp: latest.close,
-            volMultiplier: volMultiplier.toFixed(1),
-            type: type,
-            change_pct: change_pct.toFixed(2),
-            rationale: rationale,
-            deepDetails: {
-                technical: techText,
-                emotional: emotion + " - " + emoText,
-                insider: `Volume profile indicates ${volMultiplier.toFixed(1)}x normal activity mapping to targeted algorithmic liquidity sweeps.`
+            result: {
+                cmp: latest.close,
+                volMultiplier: volMultiplier.toFixed(1),
+                type: type,
+                change_pct: change_pct.toFixed(2),
+                rationale: rationale,
+                deepDetails: {
+                    technical: techText,
+                    emotional: emotion + " - " + emoText,
+                    insider: `Volume profile indicates ${volMultiplier.toFixed(1)}x normal activity mapping to targeted algorithmic liquidity sweeps.`
+                }
             }
         };
     } catch (e: any) {
@@ -240,7 +247,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const checkedSymbols = new Set<string>();
 
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 40;
         let debugLogs: string[] = [];
 
         while ((verifiedSwing.length < 3 || verifiedIntra.length < 3) && attempts < maxAttempts) {
@@ -265,21 +272,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         debugLogs.push(`${candidate.symbol}: ${quantData.error}`);
                         return;
                     }
-                    if (quantData) {
+                    if (quantData && quantData.result) {
                         const finalProfile = {
                             ...candidate,
-                            cmp: quantData.cmp,
-                            type: quantData.type,
-                            change_pct: quantData.change_pct,
-                            deepDetails: quantData.deepDetails,
-                            reasons: [quantData.rationale, `Anomalous flow.`, ...candidate.reasons]
+                            cmp: quantData.result.cmp,
+                            type: quantData.result.type,
+                            change_pct: quantData.result.change_pct,
+                            deepDetails: quantData.result.deepDetails,
+                            reasons: [quantData.result.rationale, `Anomalous flow.`, ...candidate.reasons]
                         };
 
-                        if (parseFloat(quantData.volMultiplier) > 1.5 || Math.abs(parseFloat(quantData.change_pct)) > 3) {
+                        if (parseFloat(quantData.result.volMultiplier) > 1.5 || Math.abs(parseFloat(quantData.result.change_pct)) > 3) {
                             verifiedSwing.push(finalProfile);
                         } else {
                             verifiedIntra.push(finalProfile);
                         }
+                    } else if (quantData && quantData.skipReason) {
+                        debugLogs.push(`${candidate.symbol}: skipped - ${quantData.skipReason}`);
                     } else {
                         debugLogs.push(`${candidate.symbol}: Null Output`);
                     }
