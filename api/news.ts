@@ -1,8 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import yahooFinance from "yahoo-finance2";
 import symbolsDB from "./symbols.json";
-import ti from "technicalindicators";
-const { EMA, RSI, MACD, BollingerBands, VWAP, ADX } = ti;
+import { EMA, RSI, MACD, BollingerBands, VWAP, ADX } from "technicalindicators";
 
 let globalSetupsCache: any = {
     intraday: [],
