@@ -311,7 +311,7 @@ const DemoCommoditiesTrading: React.FC = () => {
                         </div>
 
                         {selectedStock && (
-                            <div className="bg-[#1a2234] border border-[#2d3748] px-6 py-2 rounded-xl flex flex-col items-center xl:items-end shadow-lg h-[50px] justify-center ml-2">
+                            <div className="bg-[#1a2234] border border-[#2d3748] px-6 py-2 rounded-xl flex flex-col items-center sm:items-end shadow-lg h-[50px] justify-center sm:ml-2">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Available Cash</span>
                                 <span className="text-lg font-mono font-black text-[#22c55e] leading-tight">₹{cash.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
@@ -347,10 +347,10 @@ const DemoCommoditiesTrading: React.FC = () => {
                                         <span className="text-slate-500 text-sm truncate max-w-[200px] sm:max-w-xs">{selectedStock.name}</span>
                                         <MarketStatusBadge type="commodity" />
                                     </div>
-                                    <div className="flex items-end flex-wrap gap-4 mt-1 w-full justify-between sm:justify-start">
-                                        <h2 className="text-4xl font-black text-white">{selectedStock.symbol}</h2>
-                                        <div className="text-right sm:text-left">
-                                            <div className={`text-4xl font-mono font-bold tracking-tight transition-colors duration-300 ${!prevLtp || ltp === prevLtp ? 'text-white' : (ltp! > prevLtp! ? 'text-[#22c55e]' : 'text-red-500')}`}>
+                                    <div className="flex items-end flex-wrap gap-4 mt-1 w-full justify-between sm:justify-start break-all">
+                                        <h2 className="text-3xl sm:text-4xl font-black text-white">{selectedStock.symbol}</h2>
+                                        <div className="text-right sm:text-left shrink-0">
+                                            <div className={`text-3xl sm:text-4xl font-mono font-bold tracking-tight transition-colors duration-300 ${!prevLtp || ltp === prevLtp ? 'text-white' : (ltp! > prevLtp! ? 'text-[#22c55e]' : 'text-red-500')}`}>
                                                 ₹{(ltp || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
                                         </div>

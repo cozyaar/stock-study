@@ -48,7 +48,7 @@ const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicat
             layout: { background: { type: ColorType.Solid, color: '#0f172a' }, textColor: '#94a3b8' },
             grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
             width: chartContainerRef.current.clientWidth,
-            height: 540,
+            height: window.innerWidth < 768 ? 350 : 540,
             timeScale: {
                 timeVisible: true,
                 secondsVisible: false,
@@ -154,7 +154,10 @@ const StockChart: React.FC<StockChartProps> = ({ data, symbol, interval, indicat
 
         const resize = () => {
             if (chartContainerRef.current) {
-                chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+                chart.applyOptions({
+                    width: chartContainerRef.current.clientWidth,
+                    height: window.innerWidth < 768 ? 350 : 540
+                });
             }
         };
         window.addEventListener('resize', resize);

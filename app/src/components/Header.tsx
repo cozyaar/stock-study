@@ -35,8 +35,8 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
   const { user } = useAuth();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-[72px] bg-[#0a0e1a]/95 backdrop-blur-md border-b border-[#2d3748]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1a]/95 backdrop-blur-md border-b border-[#2d3748]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px]">
         <div className="flex items-center justify-between h-full">
           {/* Logo */}
           <button
@@ -141,7 +141,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#111827] border-b border-[#2d3748]">
+        <div className="md:hidden absolute top-[72px] left-0 right-0 bg-[#111827] border-b border-[#2d3748] max-h-[calc(100vh-72px)] overflow-y-auto shadow-2xl">
           <nav className="px-4 py-4 space-y-2">
             {navItems.map((item) => {
               if (item.isDropdown) {
