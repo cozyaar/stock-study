@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { TrendingUp, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import React from 'react';
 import type { Page } from '@/App';
 
 export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boolean, onPageChange: (page: Page) => void }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const [message, setMessage] = useState<{ text: React.ReactNode; type: 'success' | 'error' } | null>(null);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,6 +26,21 @@ export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boole
             if (error) {
                 if (error.message.includes("already registered")) {
                     setMessage({ text: 'Email already registered. Please log in instead.', type: 'error' });
+                } else if (error.message.includes("Password should contain")) {
+                    setMessage({
+                        text: (
+                            <div className="space-y-1 text-left">
+                                <p className="font-semibold mb-2">Password must contain at least:</p>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>One lowercase letter (a-z)</li>
+                                    <li>One uppercase letter (A-Z)</li>
+                                    <li>One number (0-9)</li>
+                                    <li>One special character (!@#$%^&*)</li>
+                                </ul>
+                            </div>
+                        ),
+                        type: 'error'
+                    });
                 } else {
                     setMessage({ text: error.message, type: 'error' });
                 }
@@ -96,14 +113,25 @@ export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boole
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                             <input
                                 id="password"
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
                                 required
                                 minLength={6}
-                                className="w-full bg-[#0a0e1a] border border-[#2d3748] rounded-lg py-2.5 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e] transition-colors"
+                                className="w-full bg-[#0a0e1a] border border-[#2d3748] rounded-lg py-2.5 pl-10 pr-12 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e] transition-colors"
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="w-5 h-5" />
+                                ) : (
+                                    <Eye className="w-5 h-5" />
+                                )}
+                            </button>
                         </div>
                     </div>
 
