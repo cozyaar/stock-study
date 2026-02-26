@@ -41,7 +41,11 @@ export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boole
             });
 
             if (error) {
-                setMessage({ text: 'Invalid email or password.', type: 'error' });
+                if (error.message.includes('Invalid login credentials')) {
+                    setMessage({ text: "Invalid login credentials. If you're new here, please Sign Up first.", type: 'error' });
+                } else {
+                    setMessage({ text: error.message, type: 'error' });
+                }
             } else {
                 setMessage({ text: 'Login successful! Redirecting...', type: 'success' });
                 setTimeout(() => onPageChange('dashboard'), 1000);
