@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { TrendingUp, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import type { Page } from '@/App';
 
 export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boolean, onPageChange: (page: Page) => void }) {
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -14,17 +15,37 @@ export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boole
         setLoading(true);
         setMessage(null);
 
-        const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-                emailRedirectTo: window.location.origin,
-            },
-        });
+        if (isSignup) {
+            const { error, data } = await supabase.auth.signUp({
+                email,
+                password,
+            });
 
-        if (error) {
-            setMessage({ text: error.message, type: 'error' });
+            if (error) {
+                if (error.message.includes("already registered")) {
+                    setMessage({ text: 'Email already registered. Please log in instead.', type: 'error' });
+                } else {
+                    setMessage({ text: error.message, type: 'error' });
+                }
+            } else if (data?.user?.identities?.length === 0) {
+                // Supabase quirk: if user exists but signUp is called, it returns data but empty identities
+                setMessage({ text: 'Email already registered. Please log in instead.', type: 'error' });
+            } else {
+                setMessage({ text: 'Account created successfully! Redirecting...', type: 'success' });
+                setTimeout(() => onPageChange('dashboard'), 1500);
+            }
         } else {
-            setMessage({ text: 'Check your email for the login link!', type: 'success' });
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) {
+                setMessage({ text: 'Invalid email or password.', type: 'error' });
+            } else {
+                setMessage({ text: 'Login successful! Redirecting...', type: 'success' });
+                setTimeout(() => onPageChange('dashboard'), 1000);
+            }
         }
         setLoading(false);
     };
@@ -40,7 +61,7 @@ export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boole
                         {isSignup ? 'Create your account' : 'Welcome back'}
                     </h2>
                     <p className="text-[#94a3b8] text-sm text-center">
-                        Enter your email to receive a secure magic link. No passwords required.
+                        {isSignup ? 'Create a secure password to protect your account.' : 'Enter your email and password to access your dashboard.'}
                     </p>
                 </div>
 
@@ -63,6 +84,25 @@ export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boole
                         </div>
                     </div>
 
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1.5">
+                            Password
+                        </label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                required
+                                minLength={6}
+                                className="w-full bg-[#0a0e1a] border border-[#2d3748] rounded-lg py-2.5 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e] transition-colors"
+                            />
+                        </div>
+                    </div>
+
                     {message && (
                         <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-[#22c55e]/10 text-[#22c55e]' : 'bg-red-500/10 text-red-500'}`}>
                             {message.text}
@@ -78,7 +118,7 @@ export function LoginPage({ isSignup = false, onPageChange }: { isSignup?: boole
                             <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                             <div className="flex items-center gap-2">
-                                {isSignup ? 'Sign Up' : 'Continue with Email'}
+                                {isSignup ? 'Create Account' : 'Secure Login'}
                                 <ArrowRight className="w-4 h-4" />
                             </div>
                         )}
