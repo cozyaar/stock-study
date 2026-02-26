@@ -239,10 +239,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        // To simulate analyzing the "Entire 5000+ Universe":
-        // We will patiently scan random batches of stocks from the entire database
-        // and only return once we have successfully found enough real high-conviction setups!
-        // This guarantees we display REAL prices directly from the market, not fallbacks.
+        // Focus scanning on the highly-liquid Nifty universe (140 top stocks)
+        // This ensures the AI instantly finds massive institutional setups without hammering Yahoo 600 times.
+        const LIQUID_UNIVERSE = [
+            'BSE', 'ZOMATO', 'PAYTM', 'JIOFIN', 'MAZDOCK', 'COCHINSHIP', 'HUDCO', 'NBCC', 'OLECTRA', 'JSWINFRA',
+            'ANGELONE', 'CDSL', 'TATAINVEST', 'KALYANKJIL', 'VBL', 'RELIANCE', 'TCS', 'INFY', 'TATASTEEL', 'HDFCBANK',
+            'ICICIBANK', 'SBIN', 'BHARTIARTL', 'ITC', 'LT', 'BAJFINANCE', 'M&M', 'MARUTI', 'SUNPHARMA', 'NTPC',
+            'TATAMOTORS', 'POWERGRID', 'TITAN', 'BAJAJFINSV', 'ASIANPAINT', 'HCLTECH', 'WIPRO', 'ULTRACEMCO', 'TECHM', 'BAJAJ-AUTO',
+            'NESTLEIND', 'ONGC', 'ADANIENT', 'ADANIPORTS', 'KOTAKBANK', 'AXISBANK', 'INDUSINDBK', 'TATACONSUM', 'COALINDIA', 'GRASIM',
+            'DRREDDY', 'APOLLOHOSP', 'BAJAJHLDNG', 'CIPLA', 'DIVISLAB', 'EICHERMOT', 'HEROMOTOCO', 'HINDALCO', 'HINDUNILVR', 'ICICIGI',
+            'ICICIPRULI', 'LTI', 'LTIM', 'MUTHOOTFIN', 'PIDILITIND', 'PIIND', 'SHREECEM', 'SRF', 'TATAPOWER', 'TORNTPHARM',
+            'TRENT', 'UPL', 'VEDL', 'ZALC', 'ZYDUSLIFE', 'ABB', 'AUBANK', 'AUROPHARMA', 'BANDHANBNK', 'BANKBARODA',
+            'BEL', 'BOSCHLTD', 'CANBK', 'CHOLAFIN', 'COLPAL', 'CYIENT', 'DIXON', 'DLF', 'ESCORTS', 'GAIL',
+            'GODREJCP', 'GODREJPROP', 'HAL', 'HDFCAMC', 'HINDPETRO', 'IDEAFORGE', 'IDFCFIRSTB', 'IGL', 'INDIANB', 'INDIGO',
+            'IREDA', 'IRFC', 'IRCTC', 'JINDALSTEL', 'JUBLFOOD', 'LUPIN', 'MARICO', 'MINDTREE', 'NATIONALUM', 'NAUKRI',
+            'OBEROIRLTY', 'OFSS', 'PAGEIND', 'PEL', 'PERSISTENT', 'PETRONET', 'PFC', 'POLYCAB', 'PNB', 'PRESTIGE',
+            'RECLTD', 'SAIL', 'SBICARD', 'SBILIFE', 'SIEMENS', 'SRTRANSFIN', 'STARHEALTH', 'SUNDARMFIN', 'SUPREMEIND', 'SUZLON',
+            'SYNGENE', 'TATACHEM', 'TATAMTRDVR', 'TVSMOTOR', 'UBL', 'UNITDSPR', 'VOLTAS', 'WHIRLPOOL', 'YESBANK', 'ZEEL'
+        ];
 
         let rawPicks = new Map();
         const verifiedSwing: any[] = [];
@@ -250,22 +264,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const checkedSymbols = new Set<string>();
 
         let attempts = 0;
-        const maxAttempts = 40;
+        const maxAttempts = 3; // Keep edge hits extremely safe to bypass Yahoo IP throttles
         let debugLogs: string[] = [];
 
         while ((verifiedSwing.length < 3 || verifiedIntra.length < 3) && attempts < maxAttempts) {
             attempts++;
 
-            const batch = [...symbolsDB]
-                .filter(s => !checkedSymbols.has(s.symbol))
+            const batch = [...LIQUID_UNIVERSE]
+                .filter(s => !checkedSymbols.has(s))
                 .sort(() => 0.5 - Math.random())
                 .slice(0, 15);
 
             if (batch.length === 0) break;
 
-            const candidates = batch.map(meta => {
-                checkedSymbols.add(meta.symbol);
-                return { symbol: meta.symbol, name: meta.name, mentions: 5, reasons: [`Algorithmic Scan triggered.`] };
+            const candidates = batch.map(sym => {
+                checkedSymbols.add(sym);
+                return { symbol: sym, name: sym + ' LTD', mentions: 5, reasons: [`Algorithmic Scan triggered.`] };
             });
 
             // Sequentially evaluate candidates with an artificial organic delay to strictly prevent Vercel fastly 429 bans
@@ -297,7 +311,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 } catch (e: any) {
                     debugLogs.push(`${candidate.symbol} exception: ${e.message}`);
                 }
-                await sleep(50); // Hard 50ms pulse to ensure IP stays completely unflagged during massive scanning runs
+                await sleep(250); // Hard 250ms organic delay: act human to bypass 429 firewalls gracefully
             }
         }
 
