@@ -2,6 +2,8 @@ import { TrendingUp, Menu, X, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { Page } from '@/App';
+import { useAuth } from '../context/AuthProvider';
+import { LogoutButton } from './LogoutButton';
 
 interface HeaderProps {
   currentPage: Page;
@@ -30,6 +32,7 @@ const navItems = [
 
 export function Header({ currentPage, onPageChange }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-[72px] bg-[#0a0e1a]/95 backdrop-blur-md border-b border-[#2d3748]">
@@ -96,15 +99,34 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button
-              variant="outline"
-              className="border-[#2d3748] text-white hover:bg-white/5 hover:border-[#4a5568]"
-            >
-              Log in
-            </Button>
-            <Button className="bg-[#22c55e] hover:bg-[#16a34a] text-white">
-              Sign Up
-            </Button>
+            {user ? (
+              <>
+                <Button
+                  onClick={() => onPageChange('dashboard')}
+                  className={`border-[#2d3748] ${currentPage === 'dashboard' ? 'bg-white/10 text-[#22c55e]' : 'text-white'} hover:bg-white/5`}
+                  variant="outline"
+                >
+                  Dashboard
+                </Button>
+                <LogoutButton />
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => onPageChange('login')}
+                  variant="outline"
+                  className="border-[#2d3748] text-white hover:bg-white/5 hover:border-[#4a5568]"
+                >
+                  Log in
+                </Button>
+                <Button
+                  onClick={() => onPageChange('signup')}
+                  className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
+                >
+                  Sign Up
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -162,15 +184,36 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
               );
             })}
             <div className="pt-4 border-t border-[#2d3748] space-y-2">
-              <Button
-                variant="outline"
-                className="w-full border-[#2d3748] text-white hover:bg-white/5"
-              >
-                Log in
-              </Button>
-              <Button className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-white">
-                Sign Up
-              </Button>
+              {user ? (
+                <>
+                  <Button
+                    onClick={() => { onPageChange('dashboard'); setMobileMenuOpen(false); }}
+                    variant="outline"
+                    className="w-full border-[#2d3748] text-white hover:bg-white/5"
+                  >
+                    Dashboard
+                  </Button>
+                  <div className="flex justify-center w-full pt-2">
+                    <LogoutButton />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => { onPageChange('login'); setMobileMenuOpen(false); }}
+                    variant="outline"
+                    className="w-full border-[#2d3748] text-white hover:bg-white/5"
+                  >
+                    Log in
+                  </Button>
+                  <Button
+                    onClick={() => { onPageChange('signup'); setMobileMenuOpen(false); }}
+                    className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-white"
+                  >
+                    Sign Up
+                  </Button>
+                </>
+              )}
             </div>
           </nav>
         </div>
