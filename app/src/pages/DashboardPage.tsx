@@ -1,9 +1,30 @@
 import { useAuth } from '../context/AuthProvider';
 import { Shield, Lock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import type { Page } from '@/App';
 
 export function DashboardPage({ onPageChange }: { onPageChange: (page: Page) => void }) {
     const { user, loading } = useAuth();
+    const [username, setUsername] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (user) {
+            if (user.user_metadata?.username) {
+                setUsername(user.user_metadata.username);
+            } else {
+                const fetchUsername = async () => {
+                    const { data } = await supabase.from('profiles').select('username').eq('email', user.email).maybeSingle();
+                    if (data?.username) {
+                        setUsername(data.username);
+                    } else {
+                        setUsername(user.email?.split('@')[0] || 'User');
+                    }
+                };
+                fetchUsername();
+            }
+        }
+    }, [user]);
 
     if (loading) {
         return (
@@ -38,21 +59,17 @@ export function DashboardPage({ onPageChange }: { onPageChange: (page: Page) => 
                 </div>
                 <div>
                     <h1 className="text-3xl font-bold text-white">Secure Dashboard</h1>
-                    <p className="text-[#94a3b8]">Welcome back, {user.email}</p>
+                    <p className="text-[#94a3b8]">Welcome back, <span className="text-[#22c55e] font-semibold">{username || 'User'}</span></p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-[#111827] border border-[#2d3748] rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-2">Account Status</h3>
                     <p className="text-[#22c55e] font-medium flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></span>
                         Authenticated & Verified
                     </p>
-                </div>
-                <div className="bg-[#111827] border border-[#2d3748] rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-2">Session ID</h3>
-                    <p className="text-[#94a3b8] font-mono text-sm truncate">{user.id}</p>
                 </div>
                 <div className="bg-[#111827] border border-[#2d3748] rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-2">Last Sign In</h3>
