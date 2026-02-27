@@ -14,6 +14,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { useAuth } from './context/AuthProvider';
 import { useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 export type Page = 'home' | 'learner' | 'demo' | 'demo-commodities' | 'about' | 'contact' | 'news' | 'calendar' | 'stock-news' | 'login' | 'signup' | 'dashboard';
 
@@ -55,6 +56,7 @@ function App() {
         {currentPage === 'signup' && <LoginPage isSignup={true} onPageChange={setCurrentPage} />}
         {currentPage === 'dashboard' && <DashboardPage onPageChange={setCurrentPage} />}
       </main>
+      <Analytics />
     </div>
   );
 }
