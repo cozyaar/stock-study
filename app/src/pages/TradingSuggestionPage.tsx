@@ -354,7 +354,7 @@ function DetailPanel({ stock, mode, onExplainToggle, onTrade }: {
                     <div className="flex items-center gap-2 mb-4">
                         <TrendingUp className="w-4 h-4 text-[#22c55e]" />
                         <h3 className="text-xs font-bold text-[#22c55e] uppercase tracking-widest">
-                            Bullish Confluence ({stock.bullish_signals.length})
+                            Bullish Confluence ({bullishSignals.length})
                         </h3>
                     </div>
                     <div className="space-y-2">
