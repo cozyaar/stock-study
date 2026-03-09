@@ -25,26 +25,12 @@ function App() {
   });
   const { session, loading } = useAuth();
 
-  // Pages that require authentication
-  const protectedPages: Page[] = ['demo', 'demo-commodities', 'news', 'calendar', 'stock-news', 'dashboard', 'suggestions'];
-
   useEffect(() => {
     // Basic Hash/URL-like routing reaction for magic link redirects back from email
     if (window.location.hash.includes('access_token')) {
       setCurrentPage('dashboard');
     }
   }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      if (session && (currentPage === 'login' || currentPage === 'signup')) {
-        setCurrentPage('dashboard');
-      } else if (!session && protectedPages.includes(currentPage)) {
-        // Redirect to login if trying to access a protected page without auth
-        setCurrentPage('login');
-      }
-    }
-  }, [session, currentPage, loading]);
 
   useEffect(() => {
     localStorage.setItem('currentPage', currentPage);
@@ -57,17 +43,17 @@ function App() {
       <main className="pt-[72px]">
         {currentPage === 'home' && <HomePage onPageChange={setCurrentPage} />}
         {currentPage === 'learner' && <LearnerPage />}
-        {currentPage === 'demo' && session && <DemoTrading />}
-        {currentPage === 'demo-commodities' && session && <DemoCommoditiesTrading />}
+        {currentPage === 'demo' && <DemoTrading />}
+        {currentPage === 'demo-commodities' && <DemoCommoditiesTrading />}
         {currentPage === 'about' && <AboutPage onPageChange={setCurrentPage} />}
         {currentPage === 'contact' && <ContactPage />}
-        {currentPage === 'news' && session && <NewsPage onPageChange={setCurrentPage} />}
-        {currentPage === 'suggestions' && session && <TradingSuggestionPage onPageChange={setCurrentPage} />}
-        {currentPage === 'calendar' && session && <EconomicCalendarPage />}
-        {currentPage === 'stock-news' && session && <GeneralNewsPage />}
+        {currentPage === 'news' && <NewsPage onPageChange={setCurrentPage} />}
+        {currentPage === 'suggestions' && <TradingSuggestionPage onPageChange={setCurrentPage} />}
+        {currentPage === 'calendar' && <EconomicCalendarPage />}
+        {currentPage === 'stock-news' && <GeneralNewsPage />}
         {currentPage === 'login' && <LoginPage onPageChange={setCurrentPage} />}
         {currentPage === 'signup' && <LoginPage isSignup={true} onPageChange={setCurrentPage} />}
-        {currentPage === 'dashboard' && session && <DashboardPage onPageChange={setCurrentPage} />}
+        {currentPage === 'dashboard' && <DashboardPage onPageChange={setCurrentPage} />}
       </main>
     </div>
   );
