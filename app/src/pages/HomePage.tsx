@@ -93,7 +93,7 @@ export function HomePage({ onPageChange }: HomePageProps) {
       </motion.div>
 
       {/* ─── Standard Scrolling Hero Text Foreground (z-10) ─── */}
-      <section className="relative h-[85vh] flex items-center justify-center pt-24 pb-0 z-10 pointer-events-none">
+      <section className="relative min-h-[85vh] flex items-center justify-center pt-24 pb-24 z-10 pointer-events-none">
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pointer-events-auto">
           <motion.div
             variants={containerVars} initial="hidden" animate="show" style={{ opacity: opacityHero }}
@@ -101,7 +101,7 @@ export function HomePage({ onPageChange }: HomePageProps) {
           >
             <motion.div variants={itemVars} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 backdrop-blur-md shadow-[0_0_20px_rgba(34,197,94,0.15)]">
               <span className="flex h-2 w-2 rounded-full bg-[#22c55e] animate-pulse" />
-              <span className="text-[10px] md:text-xs font-bold text-emerald-300 uppercase tracking-widest">Institutional Trading Simulator</span>
+              <span className="text-[10px] md:text-xs font-bold text-emerald-300 uppercase tracking-widest">Simulate. Execute. Dominate.</span>
             </motion.div>
 
             <motion.h1 variants={itemVars} className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9]">
