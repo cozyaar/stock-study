@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { LearnerPage } from './pages/LearnerPage';
@@ -13,8 +13,6 @@ import { EconomicCalendarPage } from './pages/EconomicCalendarPage';
 import { GeneralNewsPage } from './pages/GeneralNewsPage';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { useAuth } from './context/AuthProvider';
-import { useEffect } from 'react';
 
 export type Page = 'home' | 'learner' | 'demo' | 'demo-commodities' | 'about' | 'contact' | 'news' | 'calendar' | 'stock-news' | 'login' | 'signup' | 'dashboard' | 'suggestions';
 
@@ -23,7 +21,6 @@ function App() {
     const saved = localStorage.getItem('currentPage');
     return (saved as Page) || 'home';
   });
-  const { session, loading } = useAuth();
 
   useEffect(() => {
     // Basic Hash/URL-like routing reaction for magic link redirects back from email
