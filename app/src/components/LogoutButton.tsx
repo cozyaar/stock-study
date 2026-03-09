@@ -9,7 +9,7 @@ export function LogoutButton() {
         <Button
             variant="outline"
             onClick={logout}
-            className="border-[#2d3748] text-white hover:bg-white/5 hover:border-[#4a5568] flex items-center gap-2"
+            className="border-[#333333] text-white hover:bg-white/5 hover:border-[#4a5568] flex items-center gap-2"
         >
             <LogOut className="w-4 h-4" />
             Logout

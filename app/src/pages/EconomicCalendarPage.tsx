@@ -1,4 +1,5 @@
-import { CalendarDays, AlertTriangle, TrendingUp, Briefcase } from 'lucide-react';
+import { CalendarDays, AlertTriangle, TrendingUp, Briefcase, Activity } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const events = [
     {
@@ -40,53 +41,67 @@ const events = [
 
 export function EconomicCalendarPage() {
     return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                    <CalendarDays className="w-8 h-8 text-blue-500 mr-3" />
-                    Economic Calendar & Macro Events
-                </h1>
-                <p className="text-gray-400 mt-2">Critical upcoming domestic and global catalysts that will drive market volatility.</p>
+        <div className="min-h-screen bg-[#050505] font-sans selection:bg-[#22c55e]/30">
+            {/* Background Elements */}
+            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-[40vw] h-[40vw] bg-white/[0.015] blur-[150px] rounded-full mix-blend-screen" />
+                <div className="absolute bottom-0 right-1/4 w-[30vw] h-[30vw] bg-[#22c55e]/5 blur-[120px] rounded-full mix-blend-screen" />
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none" />
             </div>
 
-            <div className="bg-[#1a1f36] border border-gray-800 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-[#0a0e1a]/50 text-xs uppercase tracking-widest text-gray-500 border-b border-gray-800">
-                                <th className="p-4 font-semibold">Date</th>
-                                <th className="p-4 font-semibold">Event</th>
-                                <th className="p-4 font-semibold">Impact</th>
-                                <th className="p-4 font-semibold">Market Rationale</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800/50">
-                            {events.map((evt, idx) => (
-                                <tr key={idx} className="hover:bg-white/5 transition-colors">
-                                    <td className="p-4 whitespace-nowrap align-top">
-                                        <span className="text-blue-400 font-mono text-sm">{evt.date}</span>
-                                    </td>
-                                    <td className="p-4 align-top">
-                                        <p className="text-white font-medium flex items-center">
-                                            {evt.type === 'political' && <AlertTriangle className="w-4 h-4 text-orange-400 mr-2" />}
-                                            {evt.type === 'earnings' && <Briefcase className="w-4 h-4 text-purple-400 mr-2" />}
-                                            {evt.type === 'global' && <TrendingUp className="w-4 h-4 text-blue-400 mr-2" />}
-                                            {evt.title}
-                                        </p>
-                                    </td>
-                                    <td className="p-4 align-top">
-                                        <span className={`px-2 py-1 text-[10px] uppercase font-bold tracking-wider rounded ${evt.impact === 'Critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                                            }`}>
-                                            {evt.impact}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 align-top">
-                                        <p className="text-sm text-gray-400">{evt.description}</p>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-16">
+
+                {/* Header */}
+                <div className="mb-12 border-b border-white/5 pb-10">
+
+                    <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-5xl font-black text-white flex items-center tracking-tighter mb-4">
+                        <CalendarDays className="w-8 h-8 text-[#22c55e] mr-4 opacity-80" />
+                        Economic Calendar
+                    </motion.h1>
+                    <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-white/40 font-light text-lg max-w-2xl">
+                        Critical upcoming domestic and global catalysts algorithmically tracking parameters that drive structural market volatility.
+                    </motion.p>
+                </div>
+
+                {/* Timeline layout */}
+                <div className="space-y-6">
+                    {events.map((evt, idx) => (
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.1, duration: 0.5 }}
+                            key={idx}
+                            className="bg-white/[0.01] border border-white/5 hover:border-white/10 hover:bg-white/[0.02] rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start md:items-center transition-all group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-[#22c55e]/5 blur-[50px] rounded-full pointer-events-none group-hover:bg-[#22c55e]/10 transition-colors" />
+
+                            <div className="w-48 shrink-0 border-l-2 border-[#22c55e]/30 pl-4 py-2 relative z-10">
+                                <div className="text-xs text-[#22c55e]/60 font-black uppercase tracking-widest mb-1">Date</div>
+                                <div className="text-xl font-bold text-white tracking-tight">{evt.date}</div>
+                            </div>
+
+                            <div className="flex-1 relative z-10">
+                                <div className="flex items-center gap-3 mb-2">
+                                    {evt.type === 'political' && <AlertTriangle className="w-4 h-4 text-orange-400" />}
+                                    {evt.type === 'earnings' && <Briefcase className="w-4 h-4 text-purple-400" />}
+                                    {evt.type === 'global' && <TrendingUp className="w-4 h-4 text-sky-400" />}
+                                    {evt.type === 'domestic' && <Activity className="w-4 h-4 text-[#22c55e]" />}
+                                    <h3 className="text-2xl font-black text-white/90 tracking-tight">{evt.title}</h3>
+                                </div>
+                                <p className="text-white/40 font-light leading-relaxed max-w-2xl">{evt.description}</p>
+                            </div>
+
+                            <div className="shrink-0 relative z-10">
+                                <span className={`px-4 py-2 text-xs uppercase font-black tracking-widest rounded-xl flex items-center gap-2 border ${evt.impact === 'Critical'
+                                    ? 'bg-red-500/10 text-red-500 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.15)]'
+                                    : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                    }`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${evt.impact === 'Critical' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                                    {evt.impact}
+                                </span>
+                            </div>
+                        </motion.div>
+                    ))}
                 </div>
             </div>
         </div>

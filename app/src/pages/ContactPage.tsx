@@ -1,9 +1,6 @@
 import { useState } from 'react';
-import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Mail, Phone, MapPin, Send, ShieldAlert, Cpu } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export function ContactPage() {
   const [formData, setFormData] = useState({
@@ -16,7 +13,6 @@ export function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate form submission
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
@@ -24,233 +20,142 @@ export function ContactPage() {
     }, 3000);
   };
 
+  const containerVars = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+
+  const itemVars = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+  };
+
   return (
-    <div className="min-h-[calc(100vh-72px)] animate-in fade-in duration-500">
-      {/* Hero Section */}
-      <section className="relative py-20 lg:py-32 bg-gradient-to-br from-[#0a0e1a] via-[#111827] to-[#0a0e1a]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-              Get in <span className="text-[#22c55e]">Touch</span>
-            </h1>
-            <p className="text-xl text-[#94a3b8]">
-              Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-[#050505] font-sans selection:bg-[#22c55e]/30">
+      {/* Background Elements */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-1/4 w-[50vw] h-[50vw] bg-white/[0.015] blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-0 left-1/4 w-[40vw] h-[40vw] bg-[#22c55e]/5 blur-[120px] rounded-full mix-blend-screen" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none" />
+      </div>
 
-      {/* Contact Section */}
-      <section className="py-20 bg-[#0a0e1a]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-3 gap-12">
-            {/* Contact Info */}
-            <div className="lg:col-span-1 space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Contact Information</h2>
-                <p className="text-[#94a3b8] mb-8">
-                  Reach out to us through any of these channels. Our team is ready to help you.
-                </p>
-              </div>
+      <div className="relative z-10 max-w-[1400px] mx-auto px-6 py-12 pb-32">
 
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-[#22c55e]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-5 h-5 text-[#22c55e]" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Email</h3>
-                    <p className="text-[#94a3b8]">support@studystock.com</p>
-                    <p className="text-[#64748b] text-sm">We'll respond within 24 hours</p>
-                  </div>
-                </div>
+        {/* Header */}
+        <motion.div initial="hidden" animate="visible" variants={containerVars} className="mb-20">
 
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-[#22c55e]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-5 h-5 text-[#22c55e]" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Phone</h3>
-                    <p className="text-[#94a3b8]">+91 8904435530</p>
-                    <p className="text-[#64748b] text-sm">Mon-Fri, 9am-6pm EST</p>
-                  </div>
-                </div>
+          <motion.h1 variants={itemVars} className="text-4xl md:text-7xl font-black tracking-tighter mb-6 leading-tight">
+            Initialize <span className="bg-gradient-to-r from-[#22c55e] to-emerald-300 bg-clip-text text-transparent">Contact</span>
+          </motion.h1>
+          <motion.p variants={itemVars} className="text-xl text-white/40 font-light max-w-2xl leading-relaxed mt-4">
+            Direct secure channels to our infrastructure team. We prioritize technical issues and institutional inquiries.
+          </motion.p>
+        </motion.div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-[#22c55e]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-[#22c55e]" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Address</h3>
-                    <p className="text-[#94a3b8]">VIT CHENNAI</p>
-                    <p className="text-[#94a3b8]">Chennai, Tamil Nadu 600013</p>
-                  </div>
-                </div>
+        <div className="grid lg:grid-cols-12 gap-12 items-start">
 
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-[#22c55e]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-5 h-5 text-[#22c55e]" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Business Hours</h3>
-                    <p className="text-[#94a3b8]">Monday - Friday: 9am - 6pm EST</p>
-                    <p className="text-[#94a3b8]">Saturday - Sunday: Closed</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Social Links */}
-              <div className="pt-8 border-t border-[#2d3748]">
-                <h3 className="font-semibold mb-4">Follow Us</h3>
-                <div className="flex gap-4">
-                  {['Twitter', 'LinkedIn', 'YouTube'].map((social) => (
-                    <button
-                      key={social}
-                      className="px-4 py-2 bg-[#1a2234] border border-[#2d3748] rounded-lg text-sm text-[#94a3b8] hover:border-[#22c55e] hover:text-[#22c55e] transition-colors duration-200"
-                    >
-                      {social}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Form */}
-            <div className="lg:col-span-2">
-              <div className="bg-[#111827] border border-[#2d3748] rounded-xl p-8">
-                <h2 className="text-2xl font-bold mb-6">Send us a Message</h2>
-
-                {submitted ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-[#22c55e]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <MessageSquare className="w-8 h-8 text-[#22c55e]" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-2">Message Sent!</h3>
-                    <p className="text-[#94a3b8]">Thank you for reaching out. We'll get back to you soon.</p>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid sm:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Your Name</Label>
-                        <Input
-                          id="name"
-                          placeholder="Study Stock"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="bg-[#1a2234] border-[#2d3748] text-white placeholder:text-[#64748b] focus:border-[#22c55e]"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="study@exmaple.com"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="bg-[#1a2234] border-[#2d3748] text-white placeholder:text-[#64748b] focus:border-[#22c55e]"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="subject">Subject</Label>
-                      <Input
-                        id="subject"
-                        placeholder="How can we help?"
-                        value={formData.subject}
-                        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                        className="bg-[#1a2234] border-[#2d3748] text-white placeholder:text-[#64748b] focus:border-[#22c55e]"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="message">Message</Label>
-                      <Textarea
-                        id="message"
-                        placeholder="Tell us more about your inquiry..."
-                        value={formData.message}
-                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        className="bg-[#1a2234] border-[#2d3748] text-white placeholder:text-[#64748b] focus:border-[#22c55e] min-h-[150px]"
-                        required
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-white py-6 text-lg font-semibold"
-                    >
-                      <Send className="w-5 h-5 mr-2" />
-                      Send Message
-                    </Button>
-                  </form>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-20 bg-[#111827]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Frequently Asked Questions</h2>
-            <p className="text-[#94a3b8]">Quick answers to common questions</p>
-          </div>
-
-          <div className="space-y-4">
+          {/* Left panel */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
+            className="lg:col-span-4 space-y-6"
+          >
             {[
-              {
-                q: 'Is the demo trading account free?',
-                a: 'Yes! Our demo trading account is completely free. You get $10,000 in virtual money to practice trading without any risk.'
-              },
-              {
-                q: 'Do I need prior trading experience?',
-                a: 'Not at all. Our platform is designed for beginners and experienced traders alike. We start with the basics and progressively build your knowledge.'
-              },
-              {
-                q: 'How long does it take to complete the course?',
-                a: 'The course is self-paced. Most learners complete the fundamentals in 2-3 weeks, but you can take as much time as you need.'
-              },
-              {
-                q: 'Can I access the platform on mobile?',
-                a: 'Yes, our platform is fully responsive and works on desktop, tablet, and mobile devices.'
-              },
-            ].map((faq, index) => (
-              <div
-                key={index}
-                className="bg-[#1a2234] border border-[#2d3748] rounded-xl p-6"
-              >
-                <h3 className="font-semibold mb-2 text-lg">{faq.q}</h3>
-                <p className="text-[#94a3b8]">{faq.a}</p>
+              { icon: Mail, label: 'Secure Email', value: 'support@studystock.com', sub: '24h SLA response time' },
+              { icon: Phone, label: 'Direct Line', value: '+91 8904435530', sub: '0900 - 1800 IST' },
+              { icon: MapPin, label: 'Mainframe Location', value: 'VIT CHENNAI', sub: 'Tamil Nadu 600013' },
+            ].map((info, i) => (
+              <div key={i} className="p-6 rounded-3xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-colors flex items-start gap-5 group">
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center shrink-0 group-hover:bg-[#22c55e]/10 transition-colors">
+                  <info.icon className="w-5 h-5 text-white/40 group-hover:text-[#22c55e] transition-colors" />
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[#22c55e] mb-1">{info.label}</div>
+                  <div className="text-lg font-black text-white/90 mb-0.5">{info.value}</div>
+                  <div className="text-[11px] text-white/40 tracking-wider uppercase font-medium">{info.sub}</div>
+                </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="bg-[#0a0e1a] border-t border-[#2d3748] py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-[#22c55e] rounded-lg flex items-center justify-center">
-              <Mail className="w-5 h-5 text-white" />
+            <div className="p-6 rounded-3xl bg-[#0a0a0a] border border-white/5 mt-8">
+              <h3 className="text-xs font-black uppercase tracking-widest text-white/30 mb-4">Network Status</h3>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse" />
+                <span className="text-sm font-bold text-white/80">All Systems Operational</span>
+              </div>
+              <div className="text-[10px] text-white/40 uppercase tracking-widest mt-2">Latency: 14ms (Mumbai)</div>
             </div>
-            <span className="text-xl font-bold">Study Stock</span>
-          </div>
-          <p className="text-[#94a3b8] max-w-md mx-auto mb-8">
-            Master the art of day trading with our comprehensive learning platform.
-          </p>
-          <div className="border-t border-[#2d3748] pt-8 text-sm text-[#64748b]">
-            <p>© 2024 Study Stock. All rights reserved.</p>
-          </div>
+          </motion.div>
+
+          {/* Right form */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.1 }}
+            className="lg:col-span-8"
+          >
+            <div className="bg-[#0a0a0a] rounded-3xl p-8 md:p-12 border border-white/5 relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+
+              {submitted ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 relative z-10">
+                  <div className="w-20 h-20 bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Cpu className="w-10 h-10 text-[#22c55e]" />
+                  </div>
+                  <h3 className="text-2xl font-black mb-3 text-white">Transmission Successful</h3>
+                  <p className="text-white/40 font-light max-w-sm mx-auto">Your query has been added to our queue and will be processed immediately.</p>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black tracking-widest uppercase text-white/50">Identifier</label>
+                      <input
+                        type="text" required
+                        value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#22c55e]/50 focus:bg-white/[0.04] transition-all font-light"
+                        placeholder="Your Name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black tracking-widest uppercase text-white/50">Return Address</label>
+                      <input
+                        type="email" required
+                        value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#22c55e]/50 focus:bg-white/[0.04] transition-all font-light"
+                        placeholder="name@server.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black tracking-widest uppercase text-white/50">Classification</label>
+                    <input
+                      type="text" required
+                      value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="w-full bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#22c55e]/50 focus:bg-white/[0.04] transition-all font-light"
+                      placeholder="Subject of inquiry"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black tracking-widest uppercase text-white/50">Data Payload</label>
+                    <textarea
+                      required
+                      value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      className="w-full bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#22c55e]/50 focus:bg-white/[0.04] transition-all min-h-[160px] resize-y font-light"
+                      placeholder="Describe your issue or inquiry in detail..."
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full bg-white text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-all uppercase tracking-widest mt-4">
+                    <Send className="w-4 h-4" /> Transmit Request
+                  </button>
+                  <p className="text-[10px] text-white/30 text-center uppercase tracking-widest font-bold mt-4 flex items-center justify-center gap-2"><ShieldAlert className="w-3 h-3" /> End-to-end encrypted connection</p>
+                </form>
+              )}
+            </div>
+          </motion.div>
+
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

@@ -1,186 +1,192 @@
-import { Users, Shield, TrendingUp, Award, BookOpen } from 'lucide-react';
+import { Users, TrendingUp, Shield, Activity, ArrowUpRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export function AboutPage() {
+interface AboutPageProps {
+  onPageChange?: (page: any) => void;
+}
+
+export function AboutPage({ onPageChange }: AboutPageProps) {
+  const containerVars = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVars: any = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
+  };
+
   return (
-    <div className="min-h-[calc(100vh-72px)] animate-in fade-in duration-500">
-      {/* Hero Section */}
-      <section className="relative py-20 lg:py-32 bg-gradient-to-br from-[#0a0e1a] via-[#111827] to-[#0a0e1a]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-              About <span className="text-[#22c55e]">Study Stock</span>
-            </h1>
-            <p className="text-xl text-[#94a3b8]">
-              We're on a mission to make day trading education accessible, interactive, and risk-free for everyone.
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-[#050505] font-sans selection:bg-[#22c55e]/30">
+      {/* Background Elements */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-1/4 w-[50vw] h-[50vw] bg-white/[0.015] blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-0 left-1/4 w-[40vw] h-[40vw] bg-[#22c55e]/5 blur-[120px] rounded-full mix-blend-screen" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none" />
+      </div>
 
-      {/* Mission Section */}
-      <section className="py-20 bg-[#0a0e1a]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl font-bold mb-6">Our Mission</h2>
-              <p className="text-[#94a3b8] text-lg mb-6">
-                We believe that financial education should be accessible to everyone. Our platform provides
-                a comprehensive learning experience for day trading, combining theoretical knowledge with
-                practical, hands-on training using virtual money.
-              </p>
-              <p className="text-[#94a3b8] text-lg">
-                Whether you're a complete beginner or looking to refine your trading strategies,
-                our structured curriculum and interactive tools will help you master the art of
-                technical analysis and candlestick pattern recognition.
-              </p>
+      <div className="relative z-10">
+        {/* Hero Section */}
+        <section className="pt-16 pb-20 overflow-hidden">
+          <div className="max-w-[1400px] mx-auto px-6">
+            <motion.div
+              initial="hidden" animate="visible" variants={containerVars}
+              className="text-center max-w-4xl mx-auto"
+            >
+
+              <motion.h1 variants={itemVars} className="text-5xl md:text-7xl font-black tracking-tighter mb-8 leading-[1.1]">
+                Institutional Edge for the <br />
+                <span className="bg-gradient-to-r from-[#22c55e] to-emerald-300 bg-clip-text text-transparent">Everyday Trader</span>
+              </motion.h1>
+              <motion.p variants={itemVars} className="text-xl text-white/50 font-light leading-relaxed max-w-2xl mx-auto">
+                We're on a mission to democratize elite quantitative analysis. Moving beyond retail speculation, we provide the infrastructure needed for precise, systematic, and risk-adjusted market participation.
+              </motion.p>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Stats Grid */}
+        <section className="py-12 border-y border-white/5 bg-white/[0.01]">
+          <div className="max-w-[1400px] mx-auto px-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-white/5">
+              {[
+                { value: '10,000+', label: 'Active Learners' },
+                { value: '50+', label: 'Interactive Lessons' },
+                { value: '95%', label: 'Risk Protection' },
+                { value: '24/7', label: 'Quant Simulation' },
+              ].map((stat, i) => (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                  key={stat.label} className="text-center px-4"
+                >
+                  <p className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tighter">{stat.value}</p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">{stat.label}</p>
+                </motion.div>
+              ))}
             </div>
-            <div className="relative">
-              <img
-                src="/about-illustration.jpg"
-                alt="Trading Education"
-                className="rounded-2xl border border-[#2d3748] shadow-2xl"
-              />
+          </div>
+        </section>
+
+        {/* Values Section */}
+        <section className="py-24">
+          <div className="max-w-[1400px] mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Core Philosophy</h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: Activity,
+                  title: 'Edge Over Emotion',
+                  description: 'Trading is a mathematical pursuit. We prioritize statistical advantages and systematic execution over gut feelings.',
+                },
+                {
+                  icon: Shield,
+                  title: 'Capital Preservation First',
+                  description: 'The foundation of alpha begins with defending what you have. We build robust risk parameters into everything.',
+                },
+                {
+                  icon: Users,
+                  title: 'Uncompromising Education',
+                  description: 'We do not sell signals. We build the infrastructure to forge independent, fully self-sufficient systematic traders.',
+                },
+              ].map((value, i) => (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                  key={value.title}
+                  className="bg-white/[0.02] border border-white/5 rounded-3xl hover:bg-white/[0.04] transition-colors group"
+                >
+                  <button onClick={() => onPageChange && onPageChange('learner')} className="px-10 py-5 rounded-2xl font-bold text-lg text-white border border-white/10 hover:bg-white/5 backdrop-blur-md transition-all w-full h-full text-left">
+                    <div className="w-14 h-14 bg-white/[0.05] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#22c55e]/10 group-hover:text-[#22c55e] text-white transition-colors">
+                      <value.icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-4 tracking-tight">{value.title}</h3>
+                    <p className="text-white/40 font-light leading-relaxed">{value.description}</p>
+                  </button>
+                </motion.div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Values Section */}
-      <section className="py-20 bg-[#111827]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Our Core Values</h2>
-            <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-              The principles that guide everything we do
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: BookOpen,
-                title: 'Education First',
-                description: 'We prioritize comprehensive learning over quick profits. Knowledge is the foundation of successful trading.',
-              },
-              {
-                icon: Shield,
-                title: 'Risk-Free Learning',
-                description: 'Practice with virtual money in a realistic trading environment. Learn from mistakes without losing real capital.',
-              },
-              {
-                icon: Users,
-                title: 'Community Driven',
-                description: 'Join a community of learners and traders. Share insights, ask questions, and grow together.',
-              },
-            ].map((value) => (
-              <div
-                key={value.title}
-                className="bg-[#1a2234] border border-[#2d3748] rounded-xl p-8 text-center transition-all duration-300 hover:border-[#4a5568] hover:-translate-y-1"
-              >
-                <div className="w-16 h-16 bg-[#22c55e]/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                  <value.icon className="w-8 h-8 text-[#22c55e]" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3">{value.title}</h3>
-                <p className="text-[#94a3b8]">{value.description}</p>
+        {/* What We Offer / Features */}
+        <section className="py-24 bg-[#0a0a0a] border-y border-white/5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[#22c55e]/5 blur-[150px] rounded-full" />
+          <div className="relative max-w-[1400px] mx-auto px-6">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+              <div className="max-w-xl">
+                <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-6">The Platform Architecture</h2>
+                <p className="text-white/40 text-lg font-light">Comprehensive infrastructure engineered strictly for achieving a measurable market edge.</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-20 bg-[#0a0e1a]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { value: '10,000+', label: 'Active Learners', icon: Users },
-              { value: '50+', label: 'Interactive Lessons', icon: BookOpen },
-              { value: '95%', label: 'Success Rate', icon: TrendingUp },
-              { value: '24/7', label: 'Demo Trading', icon: Award },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="w-12 h-12 bg-[#22c55e]/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <stat.icon className="w-6 h-6 text-[#22c55e]" />
-                </div>
-                <p className="text-4xl font-bold text-[#22c55e] mb-2">{stat.value}</p>
-                <p className="text-[#94a3b8]">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* What We Offer */}
-      <section className="py-20 bg-[#111827]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">What We Offer</h2>
-            <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-              Comprehensive tools and resources to help you become a confident trader
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {[
-              {
-                title: 'Interactive Learning Modules',
-                description: 'Step-by-step lessons covering everything from basic concepts to advanced trading strategies.',
-              },
-              {
-                title: 'Virtual Trading Simulator',
-                description: 'Practice trading with real-time market data using virtual money. No risk, all learning.',
-              },
-              {
-                title: 'Candlestick Pattern Recognition',
-                description: 'Learn to identify and trade key candlestick patterns with interactive quizzes and examples.',
-              },
-              {
-                title: 'Technical Analysis Tools',
-                description: 'Master indicators like MACD, RSI, Moving Averages, and Bollinger Bands.',
-              },
-              {
-                title: 'Risk Management Training',
-                description: 'Learn essential risk management techniques to protect your capital.',
-              },
-              {
-                title: 'Progress Tracking',
-                description: 'Track your learning progress and trading performance over time.',
-              },
-            ].map((item, index) => (
-              <div
-                key={item.title}
-                className="flex gap-4 p-6 bg-[#1a2234] border border-[#2d3748] rounded-xl"
-              >
-                <div className="w-8 h-8 bg-[#22c55e] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-sm">{index + 1}</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">{item.title}</h3>
-                  <p className="text-[#94a3b8] text-sm">{item.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-[#0a0e1a] border-t border-[#2d3748] py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-[#22c55e] rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-white" />
+              <button className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/50 hover:text-white transition-colors pb-2 border-b border-transparent hover:border-white">
+                Explore The Terminal <ArrowUpRight className="w-4 h-4" />
+              </button>
             </div>
-            <span className="text-xl font-bold">Study Stock</span>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                {
+                  title: 'Advanced Systematic Screeners',
+                  description: 'Scan thousands of securities instantly utilizing deep quantitative algorithms that analyze volume profiles and institutional accumulation.',
+                },
+                {
+                  title: 'Zero-Risk Execution Engine',
+                  description: 'State-of-the-art paper trading terminal that mirrors exact live market slippage, spread, and fast-market volatility.',
+                },
+                {
+                  title: 'Order Flow & Candlestick Modeling',
+                  description: 'Learn to read naked price action and the psychology behind structural candles through our premium Academy modules.',
+                },
+                {
+                  title: 'Confluence Aggregation Panels',
+                  description: 'Stop guessing. Use mathematical confluence from over 15 proprietary indicators to generate extreme-probability setups.',
+                },
+              ].map((item, index) => (
+                <motion.div
+                  initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+                  key={item.title}
+                  className="flex gap-6 p-8 bg-white/[0.01] border border-white/5 rounded-3xl hover:border-white/10 transition-colors"
+                >
+                  <div className="text-3xl font-black text-white/10 shrink-0">
+                    0{index + 1}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg mb-2 tracking-tight">{item.title}</h3>
+                    <p className="text-white/40 font-light leading-relaxed text-sm">{item.description}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-          <p className="text-[#94a3b8] max-w-md mx-auto mb-8">
-            Master the art of day trading with our comprehensive learning platform.
-          </p>
-          <div className="border-t border-[#2d3748] pt-8 text-sm text-[#64748b]">
-            <p>© 2024 Study Stock. All rights reserved.</p>
+        </section>
+
+        {/* Footer CTA */}
+        <section className="py-32 text-center">
+          <div className="max-w-2xl mx-auto px-6">
+            <h2 className="text-4xl font-black tracking-tighter mb-6 text-white">Stop Gambling.<br />Start Executing systematically.</h2>
+            <p className="text-white/40 font-light mb-10">Sign up and gain access to the complete terminal, screener, and academy instantly.</p>
+            <button onClick={() => onPageChange && onPageChange('demo')} className="relative group overflow-hidden bg-[#22c55e] text-black px-10 py-5 rounded-2xl font-black text-lg transition-all scale-105">
+              Initialize Platform
+            </button>
           </div>
-        </div>
-      </footer>
+        </section>
+
+        {/* Simple Footer Base */}
+        <footer className="bg-[#050505] border-t border-white/5 py-12">
+          <div className="max-w-[1400px] mx-auto px-6 text-center flex flex-col items-center">
+            <div className="flex items-center gap-2 mb-6 opacity-50">
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-black" />
+              </div>
+              <span className="text-xl font-bold text-white">Study Stock</span>
+            </div>
+            <p className="text-xs text-white/20 uppercase tracking-widest font-bold">© {new Date().getFullYear()} Study Stock Quant Infrastructure. All rights reserved.</p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

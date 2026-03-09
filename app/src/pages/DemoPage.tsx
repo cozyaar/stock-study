@@ -111,12 +111,12 @@ export function DemoPage() {
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { color: '#0a0e1a' },
+        background: { color: '#050505' },
         textColor: '#94a3b8',
       },
       grid: {
-        vertLines: { color: '#1a2234' },
-        horzLines: { color: '#1a2234' },
+        vertLines: { color: '#111111' },
+        horzLines: { color: '#111111' },
       },
       crosshair: {
         mode: 1,
@@ -130,10 +130,10 @@ export function DemoPage() {
         },
       },
       rightPriceScale: {
-        borderColor: '#2d3748',
+        borderColor: '#333333',
       },
       timeScale: {
-        borderColor: '#2d3748',
+        borderColor: '#333333',
         timeVisible: true,
         secondsVisible: true,
       },
@@ -328,9 +328,9 @@ export function DemoPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-72px)] bg-[#0a0e1a] flex flex-col animate-in fade-in duration-500">
+    <div className="h-[calc(100vh-72px)] bg-[#050505] flex flex-col animate-in fade-in duration-500">
       {/* Top Navigation Bar */}
-      <div className="h-14 bg-[#111827] border-b border-[#2d3748] flex items-center justify-between px-4">
+      <div className="h-14 bg-[#0a0a0a] border-b border-[#333333] flex items-center justify-between px-4">
         {/* Left: Balance & Account */}
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
@@ -355,7 +355,7 @@ export function DemoPage() {
         {/* Center: Asset Selector */}
         <button 
           onClick={() => setShowAssetPanel(!showAssetPanel)}
-          className="flex items-center gap-3 px-4 py-2 bg-[#1a2234] rounded-lg border border-[#2d3748] hover:border-[#4a5568] transition-colors"
+          className="flex items-center gap-3 px-4 py-2 bg-[#111111] rounded-lg border border-[#333333] hover:border-[#4a5568] transition-colors"
         >
           <div className="w-8 h-8 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-lg flex items-center justify-center text-white font-bold text-xs">
             {selectedAsset.symbol.split('/')[0].slice(0, 2)}
@@ -392,9 +392,9 @@ export function DemoPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Asset Panel (Collapsible) */}
         {showAssetPanel && (
-          <div className="w-72 bg-[#111827] border-r border-[#2d3748] flex flex-col">
+          <div className="w-72 bg-[#0a0a0a] border-r border-[#333333] flex flex-col">
             {/* Category Tabs */}
-            <div className="flex border-b border-[#2d3748]">
+            <div className="flex border-b border-[#333333]">
               {['all', 'crypto', 'forex', 'stocks', 'commodities'].map((cat) => (
                 <button
                   key={cat}
@@ -419,7 +419,7 @@ export function DemoPage() {
                     setSelectedAsset(asset);
                     setShowAssetPanel(false);
                   }}
-                  className={`w-full p-4 flex items-center justify-between border-b border-[#2d3748] hover:bg-white/5 transition-colors ${
+                  className={`w-full p-4 flex items-center justify-between border-b border-[#333333] hover:bg-white/5 transition-colors ${
                     selectedAsset.symbol === asset.symbol ? 'bg-[#22c55e]/10' : ''
                   }`}
                 >
@@ -447,10 +447,10 @@ export function DemoPage() {
         {/* Chart Area */}
         <div className="flex-1 flex flex-col">
           {/* Chart Toolbar */}
-          <div className="h-10 bg-[#0a0e1a] border-b border-[#2d3748] flex items-center justify-between px-4">
+          <div className="h-10 bg-[#050505] border-b border-[#333333] flex items-center justify-between px-4">
             <div className="flex items-center gap-2">
               {/* Chart Type Buttons */}
-              <div className="flex bg-[#1a2234] rounded-lg p-1">
+              <div className="flex bg-[#111111] rounded-lg p-1">
                 <button
                   onClick={() => switchChartType('candles')}
                   className={`p-1.5 rounded transition-colors ${chartType === 'candles' ? 'bg-[#22c55e] text-white' : 'text-[#94a3b8] hover:text-white'}`}
@@ -474,7 +474,7 @@ export function DemoPage() {
                 </button>
               </div>
 
-              <div className="w-px h-6 bg-[#2d3748] mx-2" />
+              <div className="w-px h-6 bg-[#333333] mx-2" />
 
               {/* Timeframe Selector */}
               <div className="flex gap-1">
@@ -508,15 +508,15 @@ export function DemoPage() {
           />
 
           {/* Current Price Indicator */}
-          <div className="absolute top-24 right-8 bg-[#1a2234] border border-[#2d3748] rounded-lg px-4 py-2">
+          <div className="absolute top-24 right-8 bg-[#111111] border border-[#333333] rounded-lg px-4 py-2">
             <p className="text-xs text-[#64748b]">Current Price</p>
             <p className="text-xl font-mono font-bold text-white">{currentPrice.toFixed(selectedAsset.price > 100 ? 2 : 4)}</p>
           </div>
         </div>
 
         {/* Right Panel - Trade History */}
-        <div className="w-80 bg-[#111827] border-l border-[#2d3748] flex flex-col">
-          <div className="p-4 border-b border-[#2d3748]">
+        <div className="w-80 bg-[#0a0a0a] border-l border-[#333333] flex flex-col">
+          <div className="p-4 border-b border-[#333333]">
             <h3 className="font-semibold flex items-center gap-2">
               <History className="w-4 h-4" />
               Trade History
@@ -529,7 +529,7 @@ export function DemoPage() {
               <div>
                 <p className="text-xs text-[#64748b] uppercase tracking-wider mb-2">Active Trades</p>
                 {activeTrades.map((trade) => (
-                  <div key={trade.id} className="bg-[#1a2234] border border-[#2d3748] rounded-lg p-3 mb-2">
+                  <div key={trade.id} className="bg-[#111111] border border-[#333333] rounded-lg p-3 mb-2">
                     <div className="flex items-center justify-between mb-2">
                       <Badge className={trade.type === 'up' ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}>
                         {trade.type === 'up' ? 'UP' : 'DOWN'}
@@ -562,7 +562,7 @@ export function DemoPage() {
               <div>
                 <p className="text-xs text-[#64748b] uppercase tracking-wider mb-2">Completed</p>
                 {tradeHistory.slice(0, 10).map((trade) => (
-                  <div key={trade.id} className="bg-[#1a2234] border border-[#2d3748] rounded-lg p-3 mb-2">
+                  <div key={trade.id} className="bg-[#111111] border border-[#333333] rounded-lg p-3 mb-2">
                     <div className="flex items-center justify-between mb-2">
                       <Badge className={trade.type === 'up' ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}>
                         {trade.type === 'up' ? 'UP' : 'DOWN'}
@@ -592,7 +592,7 @@ export function DemoPage() {
       </div>
 
       {/* Bottom Trading Panel */}
-      <div className="h-24 bg-[#111827] border-t border-[#2d3748] px-6 flex items-center justify-between">
+      <div className="h-24 bg-[#0a0a0a] border-t border-[#333333] px-6 flex items-center justify-between">
         {/* Amount Controls */}
         <div className="flex items-center gap-4">
           <div>
@@ -600,23 +600,23 @@ export function DemoPage() {
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setTradeAmount(Math.max(10, tradeAmount - 10))}
-                className="w-10 h-10 bg-[#1a2234] border border-[#2d3748] rounded-lg flex items-center justify-center hover:border-[#4a5568] transition-colors"
+                className="w-10 h-10 bg-[#111111] border border-[#333333] rounded-lg flex items-center justify-center hover:border-[#4a5568] transition-colors"
               >
                 <Minus className="w-4 h-4" />
               </button>
-              <div className="w-28 h-10 bg-[#1a2234] border border-[#2d3748] rounded-lg flex items-center justify-center">
+              <div className="w-28 h-10 bg-[#111111] border border-[#333333] rounded-lg flex items-center justify-center">
                 <span className="font-mono font-bold">${tradeAmount}</span>
               </div>
               <button 
                 onClick={() => setTradeAmount(Math.min(balance, tradeAmount + 10))}
-                className="w-10 h-10 bg-[#1a2234] border border-[#2d3748] rounded-lg flex items-center justify-center hover:border-[#4a5568] transition-colors"
+                className="w-10 h-10 bg-[#111111] border border-[#333333] rounded-lg flex items-center justify-center hover:border-[#4a5568] transition-colors"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          <div className="w-px h-12 bg-[#2d3748]" />
+          <div className="w-px h-12 bg-[#333333]" />
 
           <div>
             <p className="text-xs text-[#64748b] mb-1">Potential Profit</p>

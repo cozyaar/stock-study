@@ -21,7 +21,7 @@ const navItems = [
   },
   {
     label: 'News', page: 'news', isDropdown: true, subItems: [
-      { label: 'Recommendations', page: 'news' },
+      { label: 'Trading Suggestions', page: 'suggestions' },
       { label: 'Economic Calendar', page: 'calendar' },
       { label: 'Global & Stock News', page: 'stock-news' }
     ]
@@ -35,7 +35,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
   const { user } = useAuth();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e1a]/95 backdrop-blur-md border-b border-[#2d3748]">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#050505]/95 backdrop-blur-md border-b border-[#333333]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px]">
         <div className="flex items-center justify-between h-full">
           {/* Logo */}
@@ -66,7 +66,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                       <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
                     </button>
                     {/* Dropdown Menu */}
-                    <div className="absolute left-0 mt-1 w-56 bg-[#0a0e1a] border border-[#2d3748] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden z-50">
+                    <div className="absolute left-0 mt-1 w-56 bg-[#050505] border border-[#333333] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden z-50">
                       <div className="py-2">
                         {item.subItems?.map(sub => (
                           <button
@@ -103,7 +103,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
               <>
                 <Button
                   onClick={() => onPageChange('dashboard')}
-                  className={`border-[#2d3748] ${currentPage === 'dashboard' ? 'bg-white/10 text-[#22c55e]' : 'text-white'} hover:bg-white/5`}
+                  className={`border-[#333333] ${currentPage === 'dashboard' ? 'bg-white/10 text-[#22c55e]' : 'text-white'} hover:bg-white/5`}
                   variant="outline"
                 >
                   Dashboard
@@ -115,7 +115,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                 <Button
                   onClick={() => onPageChange('login')}
                   variant="outline"
-                  className="border-[#2d3748] text-white hover:bg-white/5 hover:border-[#4a5568]"
+                  className="border-[#333333] text-white hover:bg-white/5 hover:border-[#4a5568]"
                 >
                   Log in
                 </Button>
@@ -141,7 +141,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute top-[72px] left-0 right-0 bg-[#111827] border-b border-[#2d3748] max-h-[calc(100vh-72px)] overflow-y-auto shadow-2xl">
+        <div className="md:hidden absolute top-[72px] left-0 right-0 bg-[#0a0a0a] border-b border-[#333333] max-h-[calc(100vh-72px)] overflow-y-auto shadow-2xl">
           <nav className="px-4 py-4 space-y-2">
             {navItems.map((item) => {
               if (item.isDropdown) {
@@ -183,13 +183,13 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                 </button>
               );
             })}
-            <div className="pt-4 border-t border-[#2d3748] space-y-2">
+            <div className="pt-4 border-t border-[#333333] space-y-2">
               {user ? (
                 <>
                   <Button
                     onClick={() => { onPageChange('dashboard'); setMobileMenuOpen(false); }}
                     variant="outline"
-                    className="w-full border-[#2d3748] text-white hover:bg-white/5"
+                    className="w-full border-[#333333] text-white hover:bg-white/5"
                   >
                     Dashboard
                   </Button>
@@ -202,7 +202,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                   <Button
                     onClick={() => { onPageChange('login'); setMobileMenuOpen(false); }}
                     variant="outline"
-                    className="w-full border-[#2d3748] text-white hover:bg-white/5"
+                    className="w-full border-[#333333] text-white hover:bg-white/5"
                   >
                     Log in
                   </Button>

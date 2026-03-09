@@ -51,16 +51,16 @@ const StockSearch: React.FC<{ onSelect: (i: Instrument) => void }> = ({ onSelect
             <div className="relative group">
                 <input
                     type="text"
-                    className="w-full bg-slate-900/80 text-white border border-slate-700/50 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm placeholder-slate-400 group-hover:border-slate-600"
+                    className="w-full bg-slate-900/80 text-white border border-slate-700/50 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#22c55e]/50 focus:border-[#22c55e] transition-all shadow-sm placeholder-slate-400 group-hover:border-slate-600"
                     placeholder="Search for NSE / BSE stocks (e.g. RELIANCE)..."
                     value={query}
                     onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
                     onFocus={() => setIsOpen(true)}
                 />
                 {loading ? (
-                    <Loader2 className="absolute left-4 top-3.5 text-blue-500 animate-spin" size={20} />
+                    <Loader2 className="absolute left-4 top-3.5 text-[#22c55e] animate-spin" size={20} />
                 ) : (
-                    <Search className="absolute left-4 top-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" size={20} />
+                    <Search className="absolute left-4 top-3.5 text-slate-400 group-hover:text-[#22c55e] transition-colors" size={20} />
                 )}
             </div>
 
@@ -79,7 +79,7 @@ const StockSearch: React.FC<{ onSelect: (i: Instrument) => void }> = ({ onSelect
                                     </div>
                                     <div className="text-xs text-slate-400 mt-0.5">{i.name}</div>
                                 </div>
-                                <div className={`text-xs px-2.5 py-1 rounded font-medium tracking-wide ${i.exchange.includes('NSE') ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'
+                                <div className={`text-xs px-2.5 py-1 rounded font-medium tracking-wide ${i.exchange.includes('NSE') ? 'bg-[#22c55e]/10 text-[#22c55e]' : 'bg-purple-500/10 text-purple-400'
                                     }`}>
                                     {i.exchanges ? i.exchanges.map(e => e.replace('_EQ', '')).join(' / ') : i.exchange.replace('_EQ', '')}
                                 </div>

@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "vercel dev",
+        "start": "vercel dev",
         "build": "npm --prefix app install && npm --prefix app run build"
     },
     "dependencies": {

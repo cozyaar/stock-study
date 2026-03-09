@@ -3,8 +3,10 @@ import axios from 'axios';
 import StockSearch from '../components/StockSearch';
 import type { Instrument } from '../components/StockSearch';
 import StockChart from '../components/StockChart';
+import TradeHistory from '../components/TradeHistory';
 import { Search, SlidersHorizontal, ArrowRightLeft, Briefcase, TrendingUp, X, BarChart2, LineChart } from 'lucide-react';
 import { useDemoStore } from '../store/demoStore';
+import { addTrade } from '../store/tradeLog';
 
 const MarketStatusBadge = ({ type }: { type: 'stock' | 'commodity' }) => {
     const [statusData, setStatusData] = useState({ status: '...', color: 'text-slate-500' });
@@ -268,12 +270,23 @@ const DemoTrading: React.FC = () => {
 
             setPositions({ ...positions, [selectedStock.symbol]: { symbol: selectedStock.symbol, qty: newQty, avgPrice: newAvgPrice } });
             setCash(cash - cost);
+
+            addTrade({
+                symbol: selectedStock.symbol,
+                name: selectedStock.name || selectedStock.symbol,
+                type: 'BUY',
+                qty,
+                price: ltp,
+                total: cost,
+                category: 'stock',
+            });
         } else {
             // SELL
             if (currentPos.qty < qty) {
                 alert("You don't have enough units to sell!");
                 return;
             }
+            const realizedPnl = (ltp - currentPos.avgPrice) * qty;
             const newQty = currentPos.qty - qty;
             const newPositions = { ...positions };
             if (newQty === 0) {
@@ -283,48 +296,66 @@ const DemoTrading: React.FC = () => {
             }
             setPositions(newPositions);
             setCash(cash + cost);
+
+            addTrade({
+                symbol: selectedStock.symbol,
+                name: selectedStock.name || selectedStock.symbol,
+                type: 'SELL',
+                qty,
+                price: ltp,
+                total: cost,
+                pnl: realizedPnl,
+                category: 'stock',
+            });
         }
     };
 
     const currentPosition = selectedStock ? positions[selectedStock.symbol] : null;
 
     return (
-        <div className="min-h-[calc(100vh-72px)] bg-transparent text-slate-200 p-4 md:p-8 font-sans">
-            <div className="max-w-[1400px] mx-auto">
-                <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8 mt-4">
+        <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#22c55e]/30">
+            {/* Background elements */}
+            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-0 right-1/4 w-[50vw] h-[50vw] bg-white/[0.015] blur-[150px] rounded-full mix-blend-screen" />
+                <div className="absolute bottom-0 left-1/4 w-[40vw] h-[40vw] bg-[#22c55e]/5 blur-[120px] rounded-full mix-blend-screen" />
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.1] mix-blend-overlay pointer-events-none" />
+            </div>
+
+            <div className="relative z-10 max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+                <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-6 sm:mb-8 mt-2 sm:mt-4">
                     <div>
-                        <h1 className="text-3xl md:text-5xl font-extrabold text-[#22c55e] drop-shadow-sm mb-2">
+                        <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-[#22c55e] drop-shadow-sm mb-1 sm:mb-2">
                             Pro Terminal
                         </h1>
-                        <p className="text-slate-400 font-medium tracking-wide">Advanced Real-time Demo Trading</p>
+                        <p className="text-white/40 font-medium tracking-wide text-sm sm:text-base">Advanced Real-time Demo Trading</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full xl:w-auto">
                         <StockSearch onSelect={handleSelectStock} />
                         {selectedStock && (
-                            <div className="bg-[#1a2234] border border-[#2d3748] px-6 py-2 rounded-xl flex flex-col items-center sm:items-end shadow-lg h-[50px] justify-center sm:ml-2">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Available Cash</span>
-                                <span className="text-lg font-mono font-black text-[#22c55e] leading-tight">₹{cash.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            <div className="bg-white/[0.01] border border-white/5 px-4 sm:px-6 py-2 rounded-2xl flex flex-col items-center sm:items-end shadow-lg h-[50px] justify-center sm:ml-2">
+                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider leading-tight">Available Cash</span>
+                                <span className="text-base sm:text-lg font-mono font-black text-[#22c55e] leading-tight">₹{cash.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}
                     </div>
                 </header>
 
                 {selectedStock ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
 
                         {/* Main Chart Area */}
                         <div className="lg:col-span-3 space-y-6">
 
                             {/* Header Card */}
-                            <div className="bg-[#1a2234] border border-[#2d3748] p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-xl rounded-2xl relative z-20">
+                            <div className="bg-white/[0.02] border border-white/5 p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-2xl rounded-2xl sm:rounded-3xl relative z-20 backdrop-blur-xl hover:border-white/10 transition-colors">
                                 <div className="relative z-10 flex flex-col gap-1 w-full">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                         <div className="flex bg-slate-800 rounded p-0.5">
                                             {selectedStock.exchanges ? selectedStock.exchanges.map(exch => (
                                                 <button
                                                     key={exch}
                                                     onClick={() => handleExchangeToggle(exch)}
-                                                    className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-colors ${selectedStock.exchange === exch ? 'bg-[#22c55e] text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                                                    className={`text-[10px] font-black uppercase tracking-widest px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-colors ${selectedStock.exchange === exch ? 'bg-white/10 text-white shadow-sm border border-white/20' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
                                                 >
                                                     {exch.replace('_EQ', '')}
                                                 </button>
@@ -334,13 +365,13 @@ const DemoTrading: React.FC = () => {
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-slate-500 text-sm truncate max-w-[200px] sm:max-w-xs">{selectedStock.name}</span>
+                                        <span className="text-slate-500 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-xs">{selectedStock.name}</span>
                                         <MarketStatusBadge type="stock" />
                                     </div>
-                                    <div className="flex items-end gap-4 mt-1 w-full justify-between sm:justify-start break-all">
-                                        <h2 className="text-3xl sm:text-4xl font-black text-white">{selectedStock.symbol}</h2>
+                                    <div className="flex items-end gap-3 sm:gap-4 mt-1 w-full justify-between sm:justify-start">
+                                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white">{selectedStock.symbol}</h2>
                                         <div className="text-right sm:text-left shrink-0">
-                                            <div className={`text-3xl sm:text-4xl font-mono font-bold tracking-tight transition-colors duration-300 ${!prevLtp || ltp === prevLtp ? 'text-white' : (ltp! > prevLtp! ? 'text-[#22c55e]' : 'text-red-500')}`}>
+                                            <div className={`text-2xl sm:text-3xl md:text-4xl font-mono font-bold tracking-tight transition-colors duration-300 ${!prevLtp || ltp === prevLtp ? 'text-white' : (ltp! > prevLtp! ? 'text-[#22c55e]' : 'text-red-500')}`}>
                                                 ₹{(ltp || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
                                         </div>
@@ -348,9 +379,9 @@ const DemoTrading: React.FC = () => {
                                 </div>
 
                                 {/* Timeframes & Indicators */}
-                                <div className="relative z-10 flex flex-col items-end gap-3 mt-6 sm:mt-0 max-w-[600px] w-full">
-                                    <div className="flex items-center gap-2 self-end">
-                                        <div className="flex bg-[#0a0e1a] border border-[#2d3748] rounded-xl overflow-hidden self-end">
+                                <div className="relative z-10 flex flex-col items-start sm:items-end gap-3 mt-4 sm:mt-0 w-full sm:max-w-[600px]">
+                                    <div className="flex items-center gap-2 w-full sm:w-auto sm:self-end">
+                                        <div className="flex bg-[#050505] border border-[#333333] rounded-xl overflow-hidden">
                                             <button
                                                 onClick={() => setChartType('candle')}
                                                 className={`flex items-center justify-center p-2 transition-colors ${chartType === 'candle' ? 'bg-[#22c55e] text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
@@ -366,12 +397,12 @@ const DemoTrading: React.FC = () => {
                                                 <LineChart size={16} />
                                             </button>
                                         </div>
-                                        <div className="flex gap-2 p-1 bg-[#0a0e1a] border border-[#2d3748] rounded-xl self-end">
+                                        <div className="flex gap-1 sm:gap-2 p-1 bg-[#050505] border border-[#333333] rounded-xl flex-1 sm:flex-none">
                                             {['1m', '5m', '15m', '1h', '1d'].map(tf => (
                                                 <button
                                                     key={tf}
                                                     onClick={() => setIntervalState(tf)}
-                                                    className={`px-3 py-1 text-sm font-bold rounded-lg transition-colors ${interval === tf ? 'bg-[#22c55e] text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
+                                                    className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-bold rounded-lg transition-colors flex-1 sm:flex-none ${interval === tf ? 'bg-[#22c55e] text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
                                                 >
                                                     {tf}
                                                 </button>
@@ -395,16 +426,16 @@ const DemoTrading: React.FC = () => {
                                             ))}
                                         <button
                                             onClick={() => setShowIndicatorMenu(true)}
-                                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[#151e32] border border-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors shadow-lg"
+                                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-white/[0.05] border border-white/10 text-white hover:text-white hover:bg-white/10 transition-colors shadow-lg"
                                         >
-                                            <SlidersHorizontal size={16} className="text-blue-400" />
-                                            <span className="text-sm font-bold tracking-wide">GTF Indicators</span>
+                                            <SlidersHorizontal size={14} className="text-[#22c55e]" />
+                                            <span className="text-[10px] uppercase font-black tracking-widest">Indicators</span>
                                         </button>
 
                                         {showIndicatorMenu && (
                                             <>
                                                 <div className="fixed inset-0 z-40" onClick={() => setShowIndicatorMenu(false)}></div>
-                                                <div className="absolute top-12 right-0 z-50 bg-[#0f1629] border border-slate-700 w-80 max-h-[60vh] flex flex-col rounded-xl shadow-2xl overflow-hidden">
+                                                <div className="fixed inset-4 sm:absolute sm:inset-auto sm:top-12 sm:right-0 z-50 bg-[#0f1629] border border-slate-700 sm:w-80 max-h-[80vh] sm:max-h-[60vh] flex flex-col rounded-xl shadow-2xl overflow-hidden">
                                                     <div className="flex items-center p-3 border-b border-slate-800">
                                                         <h3 className="text-lg font-bold text-white">Indicators</h3>
                                                         <button onClick={() => setShowIndicatorMenu(false)} className="ml-auto text-slate-400 hover:text-white p-1"><X size={20} /></button>
@@ -455,13 +486,13 @@ const DemoTrading: React.FC = () => {
 
                                         {settingsModal && tempSettings && (
                                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 w-screen h-screen">
-                                                <div className="bg-[#1a2234] border border-[#2d3748] w-full max-w-md rounded-xl shadow-2xl">
+                                                <div className="bg-[#111111] border border-[#333333] w-full max-w-md rounded-xl shadow-2xl">
                                                     <div className="flex items-center justify-between p-4 border-b border-slate-800">
                                                         <h3 className="text-xl font-bold text-white uppercase tracking-wider">{settingsModal}</h3>
                                                         <button onClick={() => setSettingsModal(null)} className="text-slate-400 hover:text-white p-1"><X size={20} /></button>
                                                     </div>
                                                     <div className="p-4 flex gap-6 border-b border-slate-800">
-                                                        <span className="text-white font-medium border-b-2 border-blue-500 pb-2 -mb-[18px]">Inputs & Style</span>
+                                                        <span className="text-white font-medium border-b-2 border-[#22c55e] pb-2 -mb-[18px]">Inputs & Style</span>
                                                     </div>
                                                     <div className="p-6 space-y-4">
                                                         {allIndicatorsList.flatMap(c => c.items).find(i => i.key === settingsModal)?.fields.map(field => (
@@ -471,7 +502,7 @@ const DemoTrading: React.FC = () => {
                                                                     type="number"
                                                                     value={tempSettings[field.name]}
                                                                     onChange={(e) => setTempSettings({ ...tempSettings, [field.name]: parseFloat(e.target.value) || 1 })}
-                                                                    className="w-24 bg-slate-900 border border-slate-700 text-white rounded px-3 py-1.5 focus:border-blue-500 outline-none text-right"
+                                                                    className="w-24 bg-slate-900 border border-slate-700 text-white rounded px-3 py-1.5 focus:border-[#22c55e] outline-none text-right"
                                                                 />
                                                             </div>
                                                         ))}
@@ -488,8 +519,8 @@ const DemoTrading: React.FC = () => {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="p-4 border-t border-[#2d3748] flex justify-end gap-3">
-                                                        <button onClick={() => setSettingsModal(null)} className="px-4 py-2 rounded-lg border border-[#2d3748] text-slate-300 hover:bg-[#2d3748] transition-colors text-sm font-medium">Cancel</button>
+                                                    <div className="p-4 border-t border-[#333333] flex justify-end gap-3">
+                                                        <button onClick={() => setSettingsModal(null)} className="px-4 py-2 rounded-lg border border-[#333333] text-slate-300 hover:bg-[#333333] transition-colors text-sm font-medium">Cancel</button>
                                                         <button onClick={() => { updateIndicatorSettings(settingsModal, 'all', tempSettings); setSettingsModal(null); }} className="px-5 py-2 rounded-lg bg-[#22c55e] hover:bg-[#16a34a] text-white transition-colors text-sm font-medium">Ok</button>
                                                     </div>
                                                 </div>
@@ -502,7 +533,7 @@ const DemoTrading: React.FC = () => {
                             {/* Chart Component */}
                             <div className="relative">
                                 {loadingChart && (
-                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0a0e1a]/50 backdrop-blur-sm rounded-2xl">
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#050505]/50 backdrop-blur-sm rounded-2xl">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-8 h-8 border-4 border-[#22c55e] border-t-transparent rounded-full animate-spin"></div>
                                             <span className="text-slate-300 font-medium">Loading Chart Data...</span>
@@ -517,7 +548,8 @@ const DemoTrading: React.FC = () => {
                         <div className="space-y-6">
 
                             {/* Order Panel */}
-                            <div className="bg-[#1a2234] border border-[#2d3748] p-6 rounded-2xl shadow-xl">
+                            <div className="bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-2xl backdrop-blur-xl relative overflow-hidden group hover:border-white/10 transition-colors">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-[#22c55e]/5 blur-[60px] rounded-full pointer-events-none group-hover:bg-[#22c55e]/10 transition-colors" />
                                 <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2 text-white">
                                         <ArrowRightLeft size={20} className="text-[#22c55e]" /> Place Order
@@ -530,7 +562,7 @@ const DemoTrading: React.FC = () => {
                                 <div className="space-y-5">
                                     <div className="space-y-4">
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block px-1">Quantity (Units)</label>
-                                        <div className="flex items-center border border-[#2d3748] rounded-xl overflow-hidden bg-[#0a0e1a] focus-within:border-slate-500/50 transition-colors w-full h-12">
+                                        <div className="flex items-center border border-[#333333] rounded-xl overflow-hidden bg-[#050505] focus-within:border-slate-500/50 transition-colors w-full h-12">
                                             <button
                                                 onClick={() => setQty(Math.max(1, qty - 1))}
                                                 className="w-10 ml-1.5 my-1.5 rounded-lg hover:bg-slate-700/50 font-black text-slate-300 flex items-center justify-center transition-colors bg-slate-800/80 cursor-pointer h-9 shrink-0"
@@ -562,14 +594,14 @@ const DemoTrading: React.FC = () => {
                                         <button
                                             onClick={() => handleTrade('BUY')}
                                             disabled={!ltp}
-                                            className="bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-slate-800 disabled:text-slate-600 text-white font-black py-3 rounded-xl transition-all uppercase tracking-wide text-sm"
+                                            className="bg-white hover:bg-gray-200 text-black disabled:bg-white/5 disabled:text-white/20 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
                                         >
                                             Buy
                                         </button>
                                         <button
                                             onClick={() => handleTrade('SELL')}
                                             disabled={!ltp || !currentPosition || currentPosition.qty < qty}
-                                            className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black py-3 rounded-xl transition-all uppercase tracking-wide text-sm border-2 border-transparent hover:border-slate-600"
+                                            className="bg-red-500/10 hover:bg-red-500/20 disabled:bg-white/5 disabled:text-white/20 text-red-500 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm border border-red-500/20 hover:border-red-500/30 active:scale-95"
                                         >
                                             Sell
                                         </button>
@@ -578,7 +610,7 @@ const DemoTrading: React.FC = () => {
                             </div>
 
                             {/* Portfolio Panel */}
-                            <div className="bg-[#1a2234] border border-[#2d3748] p-6 rounded-2xl shadow-xl flex flex-col max-h-[400px]">
+                            <div className="bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-2xl backdrop-blur-xl flex flex-col max-h-[400px] hover:border-white/10 transition-colors">
                                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white shrink-0">
                                     <Briefcase size={20} className="text-[#22c55e]" /> My Portfolio
                                 </h3>
@@ -620,15 +652,19 @@ const DemoTrading: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-[20vh] border-2 border-dashed border-[#2d3748] rounded-3xl bg-[#0a0e1a]/50 backdrop-blur-sm">
-                        <div className="bg-[#1a2234] p-6 rounded-3xl mb-6 shadow-inner border border-[#2d3748]">
-                            <TrendingUp size={56} className="text-[#22c55e] drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]" />
+                    <div className="flex flex-col items-center justify-center py-[20vh] border border-white/5 rounded-3xl bg-white/[0.01] backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#22c55e]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                        <div className="bg-white/[0.02] border border-white/5 p-8 rounded-3xl mb-6 shadow-xl relative z-10 group-hover:scale-110 transition-transform duration-700">
+                            <TrendingUp size={48} className="text-[#22c55e] drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]" />
                         </div>
                         <h2 className="text-3xl font-bold text-white mb-3">Your Journey Starts Here</h2>
                         <p className="text-slate-400 max-w-md text-center">Search for a company using the search bar above to view real-time charts, indicators, and execute demo trades.</p>
                     </div>
                 )}
             </div>
+
+            {/* Trade Journal */}
+            <TradeHistory />
         </div>
     );
 };

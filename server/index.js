@@ -8,6 +8,7 @@ import zlib from "zlib";
 import YahooFinance from "yahoo-finance2";
 import Parser from "rss-parser";
 import ti from "technicalindicators";
+import { runProScreener } from "./mlScreener.js";
 const { EMA, RSI, MACD, BollingerBands, VWAP, ADX } = ti;
 const yahooFinance = new YahooFinance();
 const parser = new Parser();
@@ -511,94 +512,127 @@ app.get('/api/news', async (req, res) => {
         const ONE_HOUR = 60 * 60 * 1000;
         const now = Date.now();
 
-        if (globalSetupsCache.lastUpdated !== 0 && (now - globalSetupsCache.lastUpdated < ONE_HOUR) && globalSetupsCache.swing.length > 0) {
+        // Serve from cache if available and fresh
+        if (globalSetupsCache.lastUpdated !== 0 && (now - globalSetupsCache.lastUpdated < ONE_HOUR) && (globalSetupsCache.swing.length > 0 || globalSetupsCache.intraday.length > 0)) {
             return res.status(200).json({
-                news: [], // We omit news here for simplicity in cache response
+                news: [],
                 intradaySetups: globalSetupsCache.intraday,
-                swingSetups: globalSetupsCache.swing
+                swingSetups: globalSetupsCache.swing,
+                for_date: globalSetupsCache.for_date || '',
+                model_version: '5.0.0',
+                universe_scanned: globalSetupsCache.universe_scanned || 600,
+                indicators_used: 16,
+                disclaimer: globalSetupsCache.disclaimer || ''
             });
         }
 
-        // To GUARANTEE high movers for the user, we will explicitly scan a batch of traditionally volatile/high beta Indian stocks
-        // Adjusted the stock list to remove highly politicized / Adani companies and include stable high-beta / trending leaders across NIFTY50 & midcap.
-        const HIGH_BETA_SYMBOLS = [
-            "SUZLON", "IREDA", "RVNL", "IRFC", "HAL", "BSE", "ZOMATO", "PAYTM",
-            "JIOFIN", "MAZDOCK", "COCHINSHIP", "HUDCO", "NBCC", "OLECTRA", "JSWINFRA",
-            "ANGELONE", "CDSL", "TATAINVEST", "KALYANKJIL", "VBL", "RELIANCE", "TCS", "INFY",
-            "TATASTEEL", "HDFCBANK", "ICICIBANK", "SBIN", "BHARTIARTL", "ITC", "LT",
-            "BAJFINANCE", "M&M", "MARUTI", "SUNPHARMA", "NTPC", "TATAMOTORS", "POWERGRID",
-            "TITAN", "BAJAJFINSV", "ASIANPAINT", "HCLTECH"
-        ];
+        console.log('\n🔬 Running Institutional-Grade Screener (Swing + Intraday)...');
 
-        let rawPicks = new Map();
+        // Run the pro screener for both modes in parallel
+        const [swingResult, intradayResult] = await Promise.all([
+            runProScreener('swing', yahooFinance, ti, instruments, null, axios).catch(e => {
+                console.error('Swing screener error:', e.message);
+                return { results: [], for_date: '', disclaimer: '', universe_scanned: 0 };
+            }),
+            runProScreener('intraday', yahooFinance, ti, instruments, null, axios).catch(e => {
+                console.error('Intraday screener error:', e.message);
+                return { results: [], for_date: '', disclaimer: '', universe_scanned: 0 };
+            })
+        ]);
 
-        // Populate rawPicks mapping
-        for (const symbol of HIGH_BETA_SYMBOLS) {
-            let inst = instruments.find(i => i.symbol === symbol);
-            rawPicks.set(symbol, {
-                symbol: symbol,
-                name: inst ? inst.name : symbol,
-                mentions: 5, // Faux mentions to bypass threshold
-                reasons: [`Direct High-Beta Volatility Scan: Triggered for potential >7% extreme deviation.`]
-            });
-        }
+        // Adapt results for the NewsPage format (which expects key_factors, why_it_can_rise)
+        const adaptForNewsPage = (results) => results.map(stock => ({
+            ...stock,
+            key_factors: (stock.bullish_signals || []).map(s => ({ technical: s.tech, simple: s.simple })),
+            why_it_can_rise: (stock.bullish_signals || []).slice(0, 4).map(s => ({ technical: s.tech, simple: s.simple })),
+        }));
 
-        const verifiedSwing = [];
-        const verifiedIntra = [];
+        const swingSetups = adaptForNewsPage(swingResult.results || []);
+        const intradaySetups = adaptForNewsPage(intradayResult.results || []);
 
-        // Scan all high beta stocks using the new rigorous >5-7% analytical engine
-        for (const candidate of rawPicks.values()) {
-            const quantData = await checkTechnicalCatalyst(candidate.symbol);
-            if (quantData) {
-                const finalProfile = {
-                    ...candidate,
-                    cmp: quantData.cmp,
-                    type: quantData.type,
-                    change_pct: quantData.change_pct, // Important for sorting
-                    deepDetails: quantData.deepDetails,
-                    reasons: [
-                        quantData.rationale,
-                        `Massive order flow anomalies detected across quantitative volatility models.`,
-                        ...candidate.reasons
-                    ].slice(0, 3)
-                };
-
-                // Allocate to intra/swing based on volume strength or movement
-                if (parseFloat(quantData.volMultiplier) > 1.5 || Math.abs(parseFloat(quantData.change_pct)) > 3) {
-                    verifiedSwing.push(finalProfile);
-                } else {
-                    verifiedIntra.push(finalProfile);
-                }
-            }
-        }
-
-        // Sort both arrays by absolute percentage change to GUARANTEE the highest movers are prioritized
-        verifiedSwing.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
-        verifiedIntra.sort((a, b) => Math.abs(parseFloat(b.change_pct)) - Math.abs(parseFloat(a.change_pct)));
-
-        // We simply keep the top arrays without forcing cross-pollination. This eliminates the user's issue with seeing duplicate stocks in both categories.
-        // We ensure a minimum number of elements visually on the frontend if needed, rather than returning fake duplicate backend data.
-
-        // De-duplicate if they got copied across
-        const uniqueSwing = Array.from(new Set(verifiedSwing.map(s => s.symbol))).map(sym => verifiedSwing.find(s => s.symbol === sym));
-        const uniqueIntra = Array.from(new Set(verifiedIntra.map(s => s.symbol))).map(sym => verifiedIntra.find(s => s.symbol === sym));
-
-        const formattedSwing = processSignalsForTargets(uniqueSwing.slice(0, 5), true);
-        const formattedIntra = processSignalsForTargets(uniqueIntra.slice(0, 5), false);
-
-        globalSetupsCache.swing = formattedSwing;
-        globalSetupsCache.intraday = formattedIntra;
+        // Cache
+        globalSetupsCache.swing = swingSetups;
+        globalSetupsCache.intraday = intradaySetups;
         globalSetupsCache.lastUpdated = now;
+        globalSetupsCache.for_date = swingResult.for_date || intradayResult.for_date || '';
+        globalSetupsCache.universe_scanned = swingResult.universe_scanned || intradayResult.universe_scanned || 0;
+        globalSetupsCache.disclaimer = swingResult.disclaimer || intradayResult.disclaimer || '';
+
+        console.log(`✅ Screener complete: ${swingSetups.length} swing, ${intradaySetups.length} intraday setups`);
 
         res.status(200).json({
-            news: [], // Skipping news scraping overhead for speed, focusing ONLY on the high-movement stock setups requested
-            intradaySetups: formattedIntra,
-            swingSetups: formattedSwing
+            news: [],
+            intradaySetups,
+            swingSetups,
+            for_date: globalSetupsCache.for_date,
+            model_version: '5.0.0',
+            universe_scanned: globalSetupsCache.universe_scanned,
+            indicators_used: 16,
+            disclaimer: globalSetupsCache.disclaimer
         });
 
     } catch (error) {
         console.error("Deep Analysis Engine Error:", error);
         res.status(500).json({ error: "Failed to perform deep quant analysis." });
+    }
+});
+
+let cachedNews = [];
+let lastFetchTime = 0;
+
+app.get('/api/global-news', async (req, res) => {
+    try {
+        const ONE_HOUR = 60 * 60 * 1000;
+        const now = Date.now();
+
+        if (cachedNews.length > 0 && (now - lastFetchTime < ONE_HOUR)) {
+            return res.status(200).json({ news: cachedNews });
+        }
+
+        let newNews = [];
+        const feedUrls = [
+            'https://news.google.com/rss/search?q=Indian+Stock+Market+NSE+BSE&hl=en-IN&gl=IN&ceid=IN:en',
+            'https://news.google.com/rss/search?q=NSE+BSE+Smallcap+Midcap+Breakout&hl=en-IN&gl=IN&ceid=IN:en'
+        ];
+
+        const allFeeds = await Promise.all(feedUrls.map(url => parser.parseURL(url).catch(() => ({ items: [] }))));
+        let rawArticles = [];
+        allFeeds.forEach(f => f.items.forEach(i => rawArticles.push(i)));
+
+        for (const item of rawArticles) {
+            const title = (item.title || '');
+            const content = (item.contentSnippet || '');
+            if (/NSE|BSE|STOCK|MARKET|NIFTY|SENSEX|ECONOMY|RATE/i.test(title)) {
+                newNews.push({
+                    title: item.title,
+                    link: item.link,
+                    pubDate: item.pubDate || new Date().toISOString(),
+                    source: item.source || 'Institutional Scraper',
+                    contentSnippet: content.substring(0, 150) + '...',
+                    isVerified: true
+                });
+            }
+        }
+
+        if (newNews.length === 0 && rawArticles.length > 0) {
+            newNews = rawArticles.slice(0, 10).map(item => ({
+                title: item.title,
+                link: item.link,
+                pubDate: item.pubDate || new Date().toISOString(),
+                source: item.source || 'Market Data',
+                contentSnippet: (item.contentSnippet || '').substring(0, 150) + '...',
+                isVerified: true
+            }));
+        }
+
+        cachedNews = newNews.length > 0 ? newNews.slice(0, 40) : [];
+        lastFetchTime = now;
+
+        res.status(200).json({ news: cachedNews });
+
+    } catch (error) {
+        console.error("News Scrape Error:", error);
+        res.status(500).json({ error: "Failed to fetch global news." });
     }
 });
 

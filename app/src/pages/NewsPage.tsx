@@ -1,24 +1,40 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Clock, Activity, ShieldCheck, Zap } from 'lucide-react';
+import { TrendingUp, Activity, Zap, BarChart2, AlertTriangle, RefreshCw, Loader2, Brain, BookOpen, Wrench, Target, ShieldAlert, ArrowUpRight, ExternalLink, X } from 'lucide-react';
 import { useDemoStore } from '../store/demoStore';
 
+interface KeyFactor {
+    technical: string;
+    simple: string;
+}
 
-interface AnalyzedSetup {
+interface TradeLevels {
+    entry: number;
+    target: number;
+    stop_loss: number;
+    target_pct: number;
+    sl_pct: number;
+    risk_reward: number;
+}
+
+interface ScreenedStock {
     symbol: string;
     name: string;
-    intradayScore: number;
-    swingScore: number;
-    reasons: string[];
-    type: 'Bullish' | 'Bearish' | 'Neutral';
-    entry: string;
-    target: string;
-    stoploss: string;
-    marginInfo: string;
-    guarantee: string;
-    deepSummary: {
-        technical: string;
-        emotional: string;
-        insider: string;
+    market: string;
+    probability: number;
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+    key_factors: KeyFactor[];
+    why_it_can_rise: KeyFactor[];
+    simple_summary: string;
+    trade_levels: TradeLevels;
+    metrics: {
+        cmp: number;
+        volume_ratio: number;
+        rsi: number;
+        ema_alignment: number;
+        adx: number;
+        atr_pct: number;
+        return_1d: number;
+        return_5d: number;
     };
 }
 
@@ -27,255 +43,488 @@ interface NewsPageProps {
 }
 
 export function NewsPage({ onPageChange }: NewsPageProps) {
-    const [intradaySetups, setIntradaySetups] = useState<AnalyzedSetup[]>([]);
-    const [swingSetups, setSwingSetups] = useState<AnalyzedSetup[]>([]);
+    const [intradayResults, setIntradayResults] = useState<ScreenedStock[]>([]);
+    const [swingResults, setSwingResults] = useState<ScreenedStock[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'swing' | 'intraday'>('swing');
-    const [hoveredSetup, setHoveredSetup] = useState<AnalyzedSetup | null>(null);
+    const [selectedStock, setSelectedStock] = useState<ScreenedStock | null>(null);
+    const [explainMode, setExplainMode] = useState<'simple' | 'technical'>('simple');
+    const [universeSize, setUniverseSize] = useState(0);
+    const [disclaimer, setDisclaimer] = useState('');
     const { setActiveSymbol } = useDemoStore();
 
-    useEffect(() => {
-        // Fetch algorithmically curated news and setups
-        fetch('/api/news')
-            .then(res => res.json())
-            .then(data => {
-                setIntradaySetups(data.intradaySetups || []);
-                setSwingSetups(data.swingSetups || []);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
-    }, []);
-
-    const renderSetupCard = (setup: AnalyzedSetup) => {
-        const isBullish = setup.type === 'Bullish';
-        const colorClass = isBullish ? 'text-[#22c55e]' : 'text-red-500';
-        const bgClass = isBullish ? 'bg-[#22c55e]/10 border-[#22c55e]/30' : 'bg-red-500/10 border-red-500/30';
-        const score = Math.abs((setup as any).change_pct_num || 2.5);
-
-        // Simulating the "confidence" percentage visually based on score heuristic
-        const confidence = Math.min(99, 85 + (score * 2.5)).toFixed(1);
-
-        return (
-            <div
-                key={setup.symbol}
-                onMouseEnter={() => setHoveredSetup(setup)}
-                onClick={() => {
-                    setActiveSymbol(setup.symbol);
-                    if (onPageChange) onPageChange('demo');
-                }}
-                className={`p-4 rounded-xl border relative overflow-hidden shadow-lg transition-transform hover:scale-[1.02] cursor-pointer ${bgClass} ${hoveredSetup?.symbol === setup.symbol ? 'ring-2 ring-[#22c55e]' : ''}`}
-            >
-                <div className="absolute top-0 right-0 p-2 flex items-center bg-[#0a0e1a]/80 backdrop-blur-sm rounded-bl-xl border-l border-b border-gray-800">
-                    <span className={`text-xs font-bold ${colorClass} mr-2`}>
-                        {confidence}% Match
-                    </span>
-                    {isBullish ? <TrendingUp className={`w-4 h-4 ${colorClass}`} /> : <TrendingDown className={`w-4 h-4 ${colorClass}`} />}
-                </div>
-
-                <div className="flex justify-between items-start mb-2">
-                    <div>
-                        <h4 className="font-bold text-xl text-white">{setup.symbol}</h4>
-                        <p className="text-sm text-gray-400">{setup.name}</p>
-                    </div>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                    <h5 className="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Algorithmic Rationale:</h5>
-                    <ul className="text-sm text-gray-300 list-disc list-inside space-y-1">
-                        {setup.reasons.map((reason, idx) => (
-                            <li key={idx} className="truncate">{reason}</li>
-                        ))}
-                        {setup.reasons.length === 0 && (
-                            <li>Verified volumetric algorithms flag massive institutional footprints.</li>
-                        )}
-                    </ul>
-                </div>
-
-                {setup.entry !== 'N/A' && (
-                    <div className="mt-4 bg-[#0a0e1a]/60 p-3 rounded-lg border border-gray-800/80 shadow-inner">
-                        <div className="text-center mb-3">
-                            <span className="bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/30 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-[0_0_10px_rgba(34,197,94,0.2)]">
-                                {setup.guarantee || "95%+ Accuracy Engine Verified"}
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                            <div>
-                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Entry (CMP)</p>
-                                <p className="text-sm font-bold text-gray-200">₹{setup.entry}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Target Exp.</p>
-                                <p className="text-sm font-bold text-[#22c55e]">₹{setup.target}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Stoploss</p>
-                                <p className="text-sm font-bold text-red-400">₹{setup.stoploss}</p>
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-center text-gray-400 mt-2 font-mono flex items-center justify-center">
-                            <Zap className="w-3 h-3 mr-1 text-yellow-500" />
-                            {setup.marginInfo}
-                        </p>
-                    </div>
-                )}
-
-                {/* Removed deepSummary from the small card, it will show on the right sidebar now */}
-
-                <div className="mt-4 pt-3 border-t border-gray-800/50 flex justify-between items-center text-xs">
-                    <span className="flex items-center text-gray-400">
-                        <ShieldCheck className="w-3 h-3 mr-1 text-blue-400" />
-                        AI Verified Source Data
-                    </span>
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${isBullish ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`}>
-                        {setup.type}
-                    </span>
-                </div>
-            </div>
-        );
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/news');
+            const data = await res.json();
+            setIntradayResults(data.intradaySetups || []);
+            setSwingResults(data.swingSetups || []);
+            setDisclaimer(data.disclaimer || '');
+            setUniverseSize(data.universe_scanned || 300);
+        } catch (err) {
+            console.error(err);
+        }
+        setLoading(false);
     };
 
+    useEffect(() => { fetchData(); }, []);
+
+    const results = activeTab === 'intraday' ? intradayResults : swingResults;
+
+    const confidenceColor = (c: string) => {
+        if (c === 'HIGH') return 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30';
+        if (c === 'MEDIUM') return 'text-amber-400 bg-amber-500/15 border-amber-500/30';
+        return 'text-slate-400 bg-slate-500/15 border-slate-500/30';
+    };
+
+    const probBarColor = (p: number) => {
+        if (p >= 0.70) return 'bg-gradient-to-r from-emerald-600 to-emerald-400';
+        if (p >= 0.50) return 'bg-gradient-to-r from-amber-600 to-amber-400';
+        return 'bg-gradient-to-r from-slate-600 to-slate-400';
+    };
+
+    const probBarGlow = (p: number) => {
+        if (p >= 0.70) return 'shadow-[0_0_12px_rgba(52,211,153,0.3)]';
+        if (p >= 0.50) return 'shadow-[0_0_12px_rgba(251,191,36,0.2)]';
+        return '';
+    };
+
+    const renderStockCard = (stock: ScreenedStock, index: number) => (
+        <div
+            key={stock.symbol}
+            onClick={() => setSelectedStock(stock)}
+            className={`p-5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${selectedStock?.symbol === stock.symbol
+                ? 'bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                : 'bg-[#1a1f36]/60 border-white/10 hover:border-white/20 hover:bg-[#1a1f36]/80'
+                }`}
+        >
+            {/* Rank + Name */}
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black ${index === 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-white/40'
+                        }`}>
+                        {index + 1}
+                    </div>
+                    <div>
+                        <h4
+                            onClick={(e) => { e.stopPropagation(); setActiveSymbol(stock.symbol); if (onPageChange) onPageChange('demo'); }}
+                            className="font-bold text-lg text-white hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1.5 group/sym"
+                        >
+                            {stock.symbol}
+                            <ExternalLink className="w-3 h-3 opacity-0 group-hover/sym:opacity-60 transition-opacity text-emerald-400" />
+                        </h4>
+                        <p className="text-xs text-white/40">{stock.name} · {stock.market}</p>
+                    </div>
+                </div>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${confidenceColor(stock.confidence)}`}>
+                    {stock.confidence}
+                </span>
+            </div>
+
+            {/* Probability Bar */}
+            <div className="mb-3">
+                <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] text-white/40 uppercase font-medium tracking-wider">Probability</span>
+                    <span className={`text-lg font-black ${stock.probability >= 0.7 ? 'text-emerald-400' : stock.probability >= 0.5 ? 'text-amber-400' : 'text-white/60'}`}>
+                        {(stock.probability * 100).toFixed(1)}%
+                    </span>
+                </div>
+                <div className={`h-2.5 bg-white/5 rounded-full overflow-hidden ${probBarGlow(stock.probability)}`}>
+                    <div
+                        className={`h-full rounded-full transition-all duration-1000 ${probBarColor(stock.probability)}`}
+                        style={{ width: `${stock.probability * 100}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* Simple summary */}
+            <p className="text-xs text-white/50 leading-relaxed mb-3 line-clamp-2">
+                {stock.simple_summary}
+            </p>
+
+            {/* Entry / Target / SL */}
+            {stock.trade_levels && (
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5">
+                    <div className="text-center">
+                        <div className="text-[9px] text-white/30 uppercase">Entry</div>
+                        <div className="text-sm font-bold text-white">₹{stock.trade_levels.entry}</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-[9px] text-emerald-400/60 uppercase">Target</div>
+                        <div className="text-sm font-bold text-emerald-400">
+                            ₹{stock.trade_levels.target}
+                            <span className="text-[9px] ml-1 text-emerald-400/60">+{stock.trade_levels.target_pct}%</span>
+                        </div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-[9px] text-red-400/60 uppercase">Stop Loss</div>
+                        <div className="text-sm font-bold text-red-400">
+                            ₹{stock.trade_levels.stop_loss}
+                            <span className="text-[9px] ml-1 text-red-400/60">-{stock.trade_levels.sl_pct}%</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
     return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-8 space-y-4 md:space-y-0">
+        <div className="container mx-auto px-4 py-8 relative z-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 space-y-4 md:space-y-0">
                 <div>
                     <h1 className="text-4xl font-bold text-white mb-2 flex items-center">
-                        <Activity className="w-8 h-8 text-[#22c55e] mr-3" />
-                        Market Analysis & Signals
+                        <Brain className="w-8 h-8 text-emerald-400 mr-3" />
+                        ML Stock Screener
                     </h1>
-                    <p className="text-gray-400">Intelligent scanning of 5000+ NSE/BSE stocks for tomorrow's best setups.</p>
+                    <p className="text-white/50 text-sm">
+                        Scanning {universeSize || '300'}+ NSE/BSE stocks · Top 5 highest probability only
+                    </p>
                 </div>
-                <div className="bg-[#1a1f36] p-1 rounded-lg inline-flex">
-                    <button
-                        onClick={() => setActiveTab('swing')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${activeTab === 'swing' ? 'bg-[#22c55e] text-[#0a0e1a]' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        <Clock className="w-4 h-4 mr-2" />
-                        Next Day Swing (90%+)
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('intraday')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${activeTab === 'intraday' ? 'bg-[#22c55e] text-[#0a0e1a]' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        <Zap className="w-4 h-4 mr-2" />
-                        Intraday Movers
+                <div className="flex items-center gap-3">
+                    <div className="bg-[#1a1f36] p-1 rounded-xl inline-flex">
+                        <button
+                            onClick={() => { setActiveTab('swing'); setSelectedStock(null); }}
+                            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${activeTab === 'swing' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25' : 'text-white/50 hover:text-white'}`}
+                        >
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                            Swing 15%+
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('intraday'); setSelectedStock(null); }}
+                            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${activeTab === 'intraday' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25' : 'text-white/50 hover:text-white'}`}
+                        >
+                            <Zap className="w-4 h-4 mr-2" />
+                            Intraday 9%+
+                        </button>
+                    </div>
+                    <button onClick={fetchData} className="p-2.5 text-white/30 hover:text-emerald-400 transition rounded-xl hover:bg-white/5 border border-white/10" title="Refresh">
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                     </button>
                 </div>
             </div>
 
             {loading ? (
                 <div className="flex flex-col justify-center items-center py-32 space-y-4">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#22c55e]"></div>
-                    <p className="text-[#22c55e] animate-pulse font-medium">Research Analyst AI processing thousands of data points...</p>
+                    <div className="relative">
+                        <div className="animate-spin rounded-full h-20 w-20 border-t-2 border-b-2 border-emerald-500"></div>
+                        <Brain className="w-8 h-8 text-emerald-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-emerald-400 animate-pulse font-medium text-lg">Scanning all NSE & BSE stocks...</p>
+                    <p className="text-white/30 text-sm text-center max-w-md">
+                        Pre-filtering active movers → scoring with volume, EMA, RSI, MACD, VWAP, ADX → calculating entry, target & stop loss
+                    </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Left Column: Analyzed Setups (Priority View) */}
-                    <div className="lg:col-span-5 order-2 lg:order-1 space-y-6">
-                        <div className="border-b border-gray-800 pb-2 flex items-center justify-between">
-                            <h2 className="text-2xl font-semibold text-white">
-                                {activeTab === 'swing' ? 'Swing Position Picks' : 'Intraday Catalyst Picks'}
-                            </h2>
-                        </div>
+                <>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        {/* Left: Ranked Results — TOP 5 */}
+                        <div className="lg:col-span-5 space-y-4">
+                            <div className="flex items-center justify-between mb-1">
+                                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                                    <BarChart2 className="w-5 h-5 text-emerald-400" />
+                                    {activeTab === 'swing' ? 'Swing Picks' : 'Intraday Picks'}
+                                    <span className="text-xs text-white/30 font-normal bg-white/5 px-2 py-0.5 rounded-full">Top 5</span>
+                                </h2>
+                            </div>
 
-                        <div className="bg-[#1a1f36]/50 p-4 rounded-xl border border-gray-800/50 backdrop-blur-sm -mt-2">
-                            <p className="text-xs text-gray-400 leading-relaxed font-mono">
-                                <span className="text-[#22c55e] font-bold">ANALYST SYSTEM: </span>
-                                These stocks have been parsed from today's top market sentiment feeds across all NSE/BSE registered companies. Our NLP engine algorithm weights catalysts by institutional momentum probability to forecast next-day trajectory.
-                            </p>
-                        </div>
-
-                        <div className="space-y-4">
-                            {activeTab === 'swing'
-                                ? swingSetups.map(setup => renderSetupCard(setup))
-                                : intradaySetups.map(setup => renderSetupCard(setup))
-                            }
-                            {(activeTab === 'swing' ? swingSetups : intradaySetups).length === 0 && (
-                                <div className="text-gray-500 text-center py-8">No high-confidence AI plays detected for this timescale today. Cash is a position.</div>
+                            {results.length === 0 ? (
+                                <div className="text-center py-16 text-white/30 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+                                    <Activity className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                                    <p className="font-medium">No high-probability setups found</p>
+                                    <p className="text-xs mt-1">Markets may be closed. Check back during trading hours (9:15 AM - 3:30 PM IST).</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {results.map((stock, i) => renderStockCard(stock, i))}
+                                </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* Right Column: News Pulse */}
-                    <div className="lg:col-span-7 order-1 lg:order-2 space-y-6 sticky top-24 self-start">
-                        <div className="border-b border-gray-800 pb-2 flex items-center justify-between">
-                            <h2 className="text-2xl font-semibold text-white">Deep Intelligence Pulse</h2>
-                            <span className="text-xs font-mono text-gray-500 flex items-center">
-                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-2"></span>
-                                AI ANALYSIS
-                            </span>
-                        </div>
-
-                        <div className="space-y-4">
-                            {hoveredSetup ? (
-                                <div className="bg-[#1a1f36]/80 p-6 rounded-xl border border-gray-700 shadow-2xl animate-in flip-in-y duration-300">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-3xl font-extrabold text-white">{hoveredSetup.symbol} <span className="text-lg text-gray-400 font-normal">{hoveredSetup.name}</span></h3>
-                                        <span className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest ${hoveredSetup.type === 'Bullish' ? 'bg-green-900/50 text-green-400 border border-green-500/30' : 'bg-red-900/50 text-red-400 border border-red-500/30'}`}>
-                                            {hoveredSetup.type} BIAS
-                                        </span>
+                        {/* Right: Deep Analysis Panel (Desktop only) */}
+                        <div className="hidden lg:block lg:col-span-7 sticky top-24 self-start space-y-4">
+                            {selectedStock ? (
+                                <div className="bg-[#1a1f36]/80 p-6 rounded-2xl border border-emerald-500/20 shadow-2xl backdrop-blur-md">
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between mb-5">
+                                        <div>
+                                            <h3
+                                                onClick={() => { setActiveSymbol(selectedStock.symbol); if (onPageChange) onPageChange('demo'); }}
+                                                className="text-3xl font-extrabold text-white hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-2 group/title"
+                                            >
+                                                {selectedStock.symbol}
+                                                <ExternalLink className="w-4 h-4 opacity-0 group-hover/title:opacity-60 transition-opacity text-emerald-400" />
+                                            </h3>
+                                            <p className="text-sm text-white/50">{selectedStock.name} · {selectedStock.market}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`text-4xl font-black ${selectedStock.probability >= 0.7 ? 'text-emerald-400' : selectedStock.probability >= 0.5 ? 'text-amber-400' : 'text-white/60'}`}>
+                                                {(selectedStock.probability * 100).toFixed(1)}%
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${confidenceColor(selectedStock.confidence)}`}>
+                                                {selectedStock.confidence}
+                                            </span>
+                                        </div>
                                     </div>
 
-                                    <div className="text-gray-300 text-sm mb-6 leading-relaxed">
-                                        <strong>Algorithm Rationale: </strong>
-                                        {hoveredSetup.reasons.join(' ')}
+                                    {/* Probability bar */}
+                                    <div className={`h-3 bg-white/5 rounded-full overflow-hidden mb-5 ${probBarGlow(selectedStock.probability)}`}>
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-1000 ${probBarColor(selectedStock.probability)}`}
+                                            style={{ width: `${selectedStock.probability * 100}%` }}
+                                        />
                                     </div>
 
-                                    {hoveredSetup.deepSummary && (
-                                        <div className="space-y-4">
-                                            <div className="bg-blue-900/10 p-4 rounded-lg border border-blue-900/40 transform hover:-translate-y-1 transition-transform">
-                                                <p className="text-xs text-blue-400 font-bold uppercase tracking-widest mb-2 flex items-center"><Activity className="w-4 h-4 mr-2" /> Algorithmic Technical Snapshot</p>
-                                                <p className="text-sm text-blue-100/80 leading-relaxed font-mono">{hoveredSetup.deepSummary.technical}</p>
+                                    {/* ===  ENTRY / TARGET / STOPLOSS  === */}
+                                    {selectedStock.trade_levels && (
+                                        <div className="grid grid-cols-3 gap-3 mb-5">
+                                            <div className="bg-white/5 rounded-xl p-3.5 text-center border border-white/10">
+                                                <div className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-1">Entry (CMP)</div>
+                                                <div className="text-xl font-black text-white">₹{selectedStock.trade_levels.entry}</div>
                                             </div>
-                                            <div className="bg-purple-900/10 p-4 rounded-lg border border-purple-900/40 transform hover:-translate-y-1 transition-transform">
-                                                <p className="text-xs text-purple-400 font-bold uppercase tracking-widest mb-2 flex items-center"><TrendingUp className="w-4 h-4 mr-2" /> Macro Emotional Sentiment</p>
-                                                <p className="text-sm text-purple-100/80 leading-relaxed font-mono">{hoveredSetup.deepSummary.emotional}</p>
+                                            <div className="bg-emerald-500/5 rounded-xl p-3.5 text-center border border-emerald-500/20">
+                                                <div className="text-[10px] text-emerald-400/70 uppercase font-bold tracking-wider mb-1 flex items-center justify-center gap-1">
+                                                    <Target className="w-3 h-3" /> Profit Target
+                                                </div>
+                                                <div className="text-xl font-black text-emerald-400">₹{selectedStock.trade_levels.target}</div>
+                                                <div className="text-[10px] text-emerald-400/60 mt-0.5">+{selectedStock.trade_levels.target_pct}% upside</div>
                                             </div>
-                                            <div className="bg-yellow-900/10 p-4 rounded-lg border border-yellow-900/40 transform hover:-translate-y-1 transition-transform">
-                                                <p className="text-xs text-yellow-500 font-bold uppercase tracking-widest mb-2 flex items-center"><ShieldCheck className="w-4 h-4 mr-2" /> Insider & Dark Pool Flow</p>
-                                                <p className="text-sm text-yellow-100/80 leading-relaxed font-mono">{hoveredSetup.deepSummary.insider}</p>
+                                            <div className="bg-red-500/5 rounded-xl p-3.5 text-center border border-red-500/20">
+                                                <div className="text-[10px] text-red-400/70 uppercase font-bold tracking-wider mb-1 flex items-center justify-center gap-1">
+                                                    <ShieldAlert className="w-3 h-3" /> Stop Loss
+                                                </div>
+                                                <div className="text-xl font-black text-red-400">₹{selectedStock.trade_levels.stop_loss}</div>
+                                                <div className="text-[10px] text-red-400/60 mt-0.5">-{selectedStock.trade_levels.sl_pct}% risk</div>
                                             </div>
                                         </div>
                                     )}
 
-                                    <div className="mt-8 pt-6 border-t border-gray-800 text-center">
+                                    {/* Risk-Reward Badge */}
+                                    {selectedStock.trade_levels && (
+                                        <div className="flex items-center justify-center gap-3 mb-5 text-xs">
+                                            <span className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-full font-bold">
+                                                Risk:Reward → 1:{selectedStock.trade_levels.risk_reward}
+                                            </span>
+                                            <span className="text-white/30">|</span>
+                                            <span className="text-white/40">
+                                                Risk ₹{selectedStock.trade_levels.sl_pct}% to gain ₹{selectedStock.trade_levels.target_pct}%
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Simple Summary */}
+                                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-5">
+                                        <p className="text-xs text-emerald-300 font-bold uppercase tracking-widest mb-2 flex items-center">
+                                            <BookOpen className="w-4 h-4 mr-2" />
+                                            In Simple Words
+                                        </p>
+                                        <p className="text-sm text-white/80 leading-relaxed">
+                                            {selectedStock.simple_summary}
+                                        </p>
+                                    </div>
+
+                                    {/* Explain Mode Toggle */}
+                                    <div className="flex items-center gap-2 mb-3">
                                         <button
-                                            onClick={() => {
-                                                setActiveSymbol(hoveredSetup.symbol);
-                                                if (onPageChange) onPageChange('demo');
-                                            }}
-                                            className="bg-[#22c55e] hover:bg-green-500 text-[#0a0e1a] font-bold py-3 px-8 rounded-lg transition-transform hover:scale-105 active:scale-95 flex items-center mx-auto"
+                                            onClick={() => setExplainMode('simple')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 ${explainMode === 'simple' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-white/40 hover:text-white/60'}`}
                                         >
-                                            <Zap className="w-5 h-5 mr-2" />
-                                            Execute {hoveredSetup.type} Trade Now
+                                            <BookOpen className="w-3 h-3" /> Easy Mode
+                                        </button>
+                                        <button
+                                            onClick={() => setExplainMode('technical')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 ${explainMode === 'technical' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-white/40 hover:text-white/60'}`}
+                                        >
+                                            <Wrench className="w-3 h-3" /> Technical
                                         </button>
                                     </div>
+
+                                    {/* Key Quantitative Factors */}
+                                    <div className="mb-5">
+                                        <h4 className="text-xs text-white/50 font-bold uppercase tracking-widest mb-3 flex items-center">
+                                            <Activity className="w-4 h-4 mr-2 text-emerald-400" />
+                                            Key Indicators
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {(selectedStock.key_factors || []).map((factor: any, i: number) => {
+                                                const isObj = typeof factor === 'object' && factor.technical;
+                                                const text = isObj
+                                                    ? (explainMode === 'simple' ? factor.simple : factor.technical)
+                                                    : factor;
+                                                return (
+                                                    <div key={i} className="flex items-start gap-2.5 text-sm">
+                                                        <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5" />
+                                                        <span className="text-white/80 leading-relaxed">{text}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Why It Can Rise */}
+                                    {selectedStock.why_it_can_rise && selectedStock.why_it_can_rise.length > 0 && (
+                                        <div className="mb-5 bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-4">
+                                            <h4 className="text-xs text-emerald-400 font-bold uppercase tracking-widest mb-3 flex items-center">
+                                                <ArrowUpRight className="w-4 h-4 mr-2" />
+                                                Why This Stock Can Rise
+                                            </h4>
+                                            <div className="space-y-2.5">
+                                                {selectedStock.why_it_can_rise.map((reason: any, i: number) => {
+                                                    const isObj = typeof reason === 'object' && reason.technical;
+                                                    const text = isObj
+                                                        ? (explainMode === 'simple' ? reason.simple : reason.technical)
+                                                        : reason;
+                                                    return (
+                                                        <div key={i} className="flex items-start gap-2.5 text-sm">
+                                                            <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5" />
+                                                            <span className="text-white/70 leading-relaxed">{text}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* CTA */}
+                                    <button
+                                        onClick={() => {
+                                            setActiveSymbol(selectedStock.symbol);
+                                            if (onPageChange) onPageChange('demo');
+                                        }}
+                                        className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 hover:from-emerald-500 hover:to-emerald-300 text-white font-bold py-3.5 px-6 rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                                    >
+                                        <BarChart2 className="w-5 h-5" />
+                                        View Live Chart & Demo Trade
+                                    </button>
                                 </div>
                             ) : (
-                                <div className="text-center py-24 text-gray-500 border border-dashed border-gray-700 rounded-xl bg-[#1a1f36]/30">
-                                    <Activity className="w-12 h-12 text-gray-600 mx-auto mb-4 opacity-50" />
-                                    <p className="text-lg font-medium text-gray-400">Hover over a setup on the left</p>
-                                    <p className="text-sm">to expand deep AI market intelligence.</p>
+                                <div className="text-center py-28 text-white/30 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+                                    <Brain className="w-14 h-14 mx-auto mb-4 opacity-20" />
+                                    <p className="text-lg font-medium text-white/40">Click a stock from the list</p>
+                                    <p className="text-sm mt-1">to see entry, target, stop loss & full analysis</p>
                                 </div>
                             )}
+
+                            {/* Disclaimer */}
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+                                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs text-amber-300/80 font-medium mb-1">⚠️ For Learning Only — NOT Financial Advice</p>
+                                    <p className="text-[11px] text-white/40 leading-relaxed">
+                                        {disclaimer || 'This screening tool is for educational purposes only. Entry, target, and stop loss levels are algorithmically calculated based on historical volatility and support/resistance — they are NOT guaranteed prices. Always do your own research before making any investment decisions.'}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </>
+            )}
+
+            {/* ── Mobile full-page detail view (at root level to escape stacking contexts) ── */}
+            {selectedStock && (
+                <div className="lg:hidden fixed inset-0 z-[100] bg-[#0d1117] flex flex-col">
+                    {/* Fixed top bar - always visible */}
+                    <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0d1117]">
+                        <div className="flex items-center gap-3">
+                            <Brain className="w-5 h-5 text-emerald-400" />
+                            <div>
+                                <div className="text-sm font-black text-white uppercase tracking-tight">{selectedStock.symbol}</div>
+                                <div className="text-[10px] text-white/40">{selectedStock.name} • {selectedStock.market || 'NSE'}</div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setSelectedStock(null)}
+                            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all active:scale-90"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Scrollable content */}
+                    <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                        {/* Header with probability */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3
+                                    onClick={() => { setActiveSymbol(selectedStock.symbol); if (onPageChange) onPageChange('demo'); }}
+                                    className="text-2xl font-extrabold text-white hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-2"
+                                >
+                                    {selectedStock.symbol}
+                                    <ExternalLink className="w-4 h-4 opacity-60 text-emerald-400" />
+                                </h3>
+                                <p className="text-xs text-white/50">{selectedStock.name} · {selectedStock.market}</p>
+                            </div>
+                            <div className="text-right">
+                                <div className={`text-3xl font-black ${selectedStock.probability >= 0.7 ? 'text-emerald-400' : selectedStock.probability >= 0.5 ? 'text-amber-400' : 'text-white/60'}`}>
+                                    {(selectedStock.probability * 100).toFixed(1)}%
+                                </div>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${confidenceColor(selectedStock.confidence)}`}>
+                                    {selectedStock.confidence}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Trade Levels */}
+                        {selectedStock.trade_levels && (
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="bg-white/5 rounded-xl p-3 text-center border border-white/10">
+                                    <div className="text-[9px] text-white/40 uppercase font-bold mb-1">Entry</div>
+                                    <div className="text-lg font-black text-white">₹{selectedStock.trade_levels.entry}</div>
+                                </div>
+                                <div className="bg-emerald-500/5 rounded-xl p-3 text-center border border-emerald-500/20">
+                                    <div className="text-[9px] text-emerald-400/70 uppercase font-bold mb-1">Target</div>
+                                    <div className="text-lg font-black text-emerald-400">₹{selectedStock.trade_levels.target}</div>
+                                    <div className="text-[9px] text-emerald-400/60">+{selectedStock.trade_levels.target_pct}%</div>
+                                </div>
+                                <div className="bg-red-500/5 rounded-xl p-3 text-center border border-red-500/20">
+                                    <div className="text-[9px] text-red-400/70 uppercase font-bold mb-1">Stop Loss</div>
+                                    <div className="text-lg font-black text-red-400">₹{selectedStock.trade_levels.stop_loss}</div>
+                                    <div className="text-[9px] text-red-400/60">-{selectedStock.trade_levels.sl_pct}%</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Simple Summary */}
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+                            <p className="text-xs text-emerald-300 font-bold uppercase tracking-widest mb-2 flex items-center">
+                                <BookOpen className="w-4 h-4 mr-2" /> In Simple Words
+                            </p>
+                            <p className="text-sm text-white/80 leading-relaxed">{selectedStock.simple_summary}</p>
+                        </div>
+
+                        {/* Key Factors */}
+                        <div>
+                            <h4 className="text-xs text-white/50 font-bold uppercase tracking-widest mb-3 flex items-center">
+                                <Activity className="w-4 h-4 mr-2 text-emerald-400" /> Key Indicators
+                            </h4>
+                            <div className="space-y-2">
+                                {(selectedStock.key_factors || []).map((factor: any, i: number) => {
+                                    const isObj = typeof factor === 'object' && factor.technical;
+                                    const text = isObj ? (explainMode === 'simple' ? factor.simple : factor.technical) : factor;
+                                    return (
+                                        <div key={i} className="flex items-start gap-2.5 text-sm">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5" />
+                                            <span className="text-white/80 leading-relaxed">{text}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* CTA */}
+                        <button
+                            onClick={() => {
+                                setActiveSymbol(selectedStock.symbol);
+                                if (onPageChange) onPageChange('demo');
+                            }}
+                            className="w-full bg-gradient-to-r from-emerald-600 to-emerald-400 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                        >
+                            <BarChart2 className="w-5 h-5" /> View Chart & Trade
+                        </button>
                     </div>
                 </div>
             )}
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 6px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: #2d3748;
-                    border-radius: 20px;
-                }
-            `}</style>
         </div>
     );
 }
