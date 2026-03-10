@@ -740,7 +740,7 @@ const HARDCODED_UNIVERSE = [
 // ===================================================================
 // MAIN SCREENER 
 // ===================================================================
-async function runProScreener(mode, yahooFinance, ti, instruments, _unused, axios) {
+async function runProScreener(mode, yahooFinance, ti, instruments, _unused, axios, maxStocks = 600) {
     const results = [];
 
     // Step 1: Get Nifty return for RS calculation
@@ -758,8 +758,8 @@ async function runProScreener(mode, yahooFinance, ti, instruments, _unused, axio
     const merged = [...new Set([...activeSymbols, ...HARDCODED_UNIVERSE, ...allNSE])];
 
 
-    // We'll scan up to 600 stocks per run for full coverage
-    const toScan = merged.slice(0, 600);
+    // We'll scan up to maxStocks stocks per run for coverage (default 600, Vercel passes 200)
+    const toScan = merged.slice(0, maxStocks);
     console.log(` Scanning ${toScan.length} stocks for tomorrow's ${mode} picks...`);
 
     let scanned = 0, skippedLiq = 0, skippedData = 0;

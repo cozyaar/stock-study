@@ -1,14 +1,12 @@
 // Vercel Serverless: /api/news — ML Screener powered (Vercel Production)
 // Uses exactly the same logic as the local Express server to preserve all parameters
 import { VercelRequest, VercelResponse } from "@vercel/node";
-// @ts-ignore
-import yahooFinance from "yahoo-finance2";
-// @ts-ignore
-import * as ti from "technicalindicators";
-// @ts-ignore
+import YahooFinance from "yahoo-finance2";
+import ti from "technicalindicators";
 import axios from "axios";
-// @ts-ignore
 import { runProScreener } from "../server/mlScreener.js";
+
+const yahooFinance = new (YahooFinance as any)();
 
 // Vercel Serverless maximum execution limit (must be <= 60 for Hobby, 300 for Pro)
 export const maxDuration = 60;
@@ -33,11 +31,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Run the pro screener in parallel chunks (up to 600 stocks usually takes 10s thanks to parallelization)
         // Note: we can adjust the maximum limit natively inside runProScreener if needed.
         const [swingResult, intradayResult] = await Promise.all([
-            runProScreener('swing', yahooFinance, ti, instruments, null, axios).catch(e => {
+            runProScreener('swing', yahooFinance, ti, instruments, null, null, 200).catch((e: any) => {
                 console.error('Swing screener error:', e.message);
                 return { results: [], for_date: '', disclaimer: '', universe_scanned: 0 };
             }),
-            runProScreener('intraday', yahooFinance, ti, instruments, null, axios).catch(e => {
+            runProScreener('intraday', yahooFinance, ti, instruments, null, null, 200).catch((e: any) => {
                 console.error('Intraday screener error:', e.message);
                 return { results: [], for_date: '', disclaimer: '', universe_scanned: 0 };
             })
