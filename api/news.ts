@@ -1,14 +1,14 @@
 // Vercel Serverless: /api/news — ML Screener powered (Vercel Production)
 // Uses exactly the same logic as the local Express server to preserve all parameters
 import { VercelRequest, VercelResponse } from "@vercel/node";
+// @ts-ignore
 import YahooFinance from "yahoo-finance2";
+// @ts-ignore
 import ti from "technicalindicators";
-import axios from "axios";
-import { runProScreener } from "../server/mlScreener.js";
 
 const yahooFinance = new (YahooFinance as any)();
 
-// Vercel Serverless maximum execution limit (must be <= 60 for Hobby, 300 for Pro)
+// Vercel Serverless maximum execution limit
 export const maxDuration = 60;
 
 // Shared Cache to prevent excessive rebuilding on rapid reloads
@@ -25,7 +25,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log('\n🔬 [VERCEL] Running Institutional-Grade Screener (Swing + Intraday)...');
 
-        // Provide an empty array as fallback if we don't fetch full instruments list
+        // Dynamically import mlScreener to avoid ESM bundling issues at build time
+        // @ts-ignore
+        const { runProScreener } = await import("../server/mlScreener.js");
+
         const instruments: any[] = [];
 
         // Run the pro screener in parallel chunks (up to 600 stocks usually takes 10s thanks to parallelization)

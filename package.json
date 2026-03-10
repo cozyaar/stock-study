@@ -2,6 +2,7 @@
     "name": "stock-study-monorepo",
     "version": "1.0.0",
     "private": true,
+    "type": "module",
     "scripts": {
         "start": "vercel dev",
         "build": "npm --prefix app install && npm --prefix app run build"
