@@ -452,8 +452,8 @@ export function TradingSuggestionPage({ onPageChange }: TradingSuggestionPagePro
                 for_date: data.for_date,
                 generated_at: new Date().toISOString(),
                 model_version: data.model_version || '5.0.0',
-                universe_scanned: data.universe_scanned || 600,
-                indicators_used: data.indicators_used || 15,
+                universe_scanned: data.universe_scanned || 0,
+                indicators_used: data.indicators_used || 16,
                 results,
                 disclaimer: data.disclaimer || '',
             });
@@ -464,7 +464,17 @@ export function TradingSuggestionPage({ onPageChange }: TradingSuggestionPagePro
 
             const top = (data.swingSetups || data.intradaySetups || [])[0];
             if (top) setSelected(top);
-        } catch { }
+        } catch (e) {
+            console.error('[TradingSuggestionPage] fetch failed:', e);
+            // Always initialize so the page shows the empty state, not a blank screen
+            const empty = (mode: string): ScreenerResponse => ({
+                mode, for_date: '', generated_at: new Date().toISOString(),
+                model_version: '5.0.0', universe_scanned: 0, indicators_used: 0,
+                results: [], disclaimer: ''
+            });
+            setIntradayData(empty('intraday'));
+            setSwingData(empty('swing'));
+        }
         setLoading(false);
     }, []);
 
