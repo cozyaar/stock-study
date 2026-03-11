@@ -2,11 +2,7 @@
 
 import { VercelRequest, VercelResponse } from "@vercel/node";
 // @ts-ignore
-import YahooFinance from "yahoo-finance2";
-// @ts-ignore
 import ti from "technicalindicators";
-
-const yahooFinance = new (YahooFinance as any)();
 
 // Vercel Serverless maximum execution limit
 export const maxDuration = 60;
@@ -23,6 +19,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         console.log('\n🔬 [VERCEL] Running Institutional-Grade Screener...');
+
+        // Dynamically import YahooFinance to avoid ERR_REQUIRE_ESM crashes on Vercel Node Runtime
+        const yfModule = await import("yahoo-finance2");
+        const YahooFinanceCls = (yfModule as any).default || yfModule;
+
+        let yahooFinance: any;
+        try {
+            yahooFinance = new YahooFinanceCls();
+        } catch {
+            yahooFinance = YahooFinanceCls;
+        }
 
         const instruments: any[] = []; // Used if we don't have CSV on Vercel
 
